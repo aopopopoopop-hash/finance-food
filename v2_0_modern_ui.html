@@ -1,0 +1,2371 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>FinPulse & SmartFridge — Твой бюджет и питание</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f6fb;
+            color: #0f172a;
+            -webkit-tap-highlight-color: transparent;
+        }
+        h1, h2, h3, .font-display {
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        }
+        /* Скрытие скроллбара для горизонтальных лент на мобильном */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Кастомный тонкий скроллбар */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .bento-card {
+            background: #ffffff;
+            border-radius: 1.5rem;
+            border: 1px solid rgba(226, 232, 240, 0.85);
+            box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04), 0 2px 6px rgba(15, 23, 42, 0.02);
+        }
+        .glass-bar {
+            background: rgba(255, 255, 255, 0.86);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .btn-press:active {
+            transform: scale(0.96);
+        }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-view {
+            animation: slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-28 md:pb-12 selection:bg-violet-600 selection:text-white">
+
+    <!-- КОНТЕЙНЕР УВЕДОМЛЕНИЙ (TOASTS) -->
+    <div id="toastContainer" class="fixed top-20 md:top-auto md:bottom-6 right-4 left-4 md:left-auto md:w-96 z-50 pointer-events-none flex flex-col gap-2"></div>
+
+    <!-- ======================================================================= -->
+    <!-- СОВРЕМЕННАЯ ШАПКА ПРИЛОЖЕНИЯ С ПЕРЕКЛЮЧАТЕЛЕМ МЕСЯЦЕВ                    -->
+    <!-- ======================================================================= -->
+    <header class="sticky top-0 z-30 glass-bar border-b border-slate-200/80">
+        <div class="max-w-6xl mx-auto px-3.5 sm:px-6 py-2.5 sm:py-3">
+            <div class="flex flex-wrap items-center justify-between gap-2.5">
+
+                <!-- Логотип и статус базы -->
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+                        <i class="fa-solid fa-bolt-lightning text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-display font-extrabold text-base sm:text-lg tracking-tight text-slate-900">FinPulse</span>
+                            <span id="dataStatusBadge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                Демо
+                            </span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 hidden sm:block">Умный бюджет, календарь трат и рацион</p>
+                    </div>
+                </div>
+
+                <!-- ЦЕНТРАЛЬНЫЙ ПЕРЕКЛЮЧАТЕЛЬ МЕСЯЦА И ГОДА -->
+                <div class="flex items-center bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 order-3 sm:order-2 w-full sm:w-auto justify-between sm:justify-center">
+                    <button onclick="shiftMonth(-1)" class="btn-press w-8 h-8 rounded-xl hover:bg-white text-slate-700 flex items-center justify-center transition cursor-pointer" title="Предыдущий месяц">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+
+                    <div class="relative flex items-center gap-1.5 px-3 py-1 rounded-xl hover:bg-white/80 transition cursor-pointer" onclick="document.getElementById('monthPickerInput').showPicker && document.getElementById('monthPickerInput').showPicker()">
+                        <i class="fa-regular fa-calendar text-violet-600 text-xs"></i>
+                        <span id="activeMonthLabel" class="font-display font-bold text-xs sm:text-sm text-slate-900 capitalize">Октябрь 2026</span>
+                        <i class="fa-solid fa-caret-down text-[10px] text-slate-400"></i>
+                        <input
+                            type="month"
+                            id="monthPickerInput"
+                            onchange="handleMonthPickerChange(this.value)"
+                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            title="Выбрать любой месяц и год"
+                        >
+                    </div>
+
+                    <button onclick="shiftMonth(1)" class="btn-press w-8 h-8 rounded-xl hover:bg-white text-slate-700 flex items-center justify-center transition cursor-pointer" title="Следующий месяц">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+
+                    <button onclick="jumpToToday()" class="btn-press ml-1 px-2.5 py-1.5 rounded-xl bg-white text-violet-700 hover:bg-violet-50 font-bold text-[11px] shadow-2xs border border-slate-200/60 transition cursor-pointer" title="Перейти к сегодняшней дате">
+                        Сегодня
+                    </button>
+                </div>
+
+                <!-- ПРАВАЯ ПАНЕЛЬ БЫСТРЫХ ДЕЙСТВИЙ (Сброс демо, Настройки, GitHub) -->
+                <div class="flex items-center gap-1.5 order-2 sm:order-3">
+                    <button onclick="openClearConfirmModal()" class="btn-press inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs transition cursor-pointer" title="Очистить все демонстрационные примеры и начать с нуля">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span class="hidden md:inline">Очистить примеры</span>
+                        <span class="md:hidden">Сброс</span>
+                    </button>
+
+                    <button onclick="restoreDemoData()" class="btn-press w-8 h-8 sm:w-auto sm:px-2.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer" title="Вернуть демонстрационные данные">
+                        <i class="fa-solid fa-rotate-left text-emerald-600"></i>
+                        <span class="hidden lg:inline">Демо</span>
+                    </button>
+
+                    <button onclick="openSettingsModal()" class="btn-press w-8 h-8 sm:w-auto sm:px-3 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer" title="Настроить свои кнопки, лимиты и валюту">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span class="hidden sm:inline">Кнопки</span>
+                    </button>
+
+                    <button onclick="openDevModal()" class="btn-press w-8 h-8 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 flex items-center justify-center text-xs transition cursor-pointer" title="Шпаргалка разработчика и выкладка на GitHub">
+                        <i class="fa-brands fa-github text-sm"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <main class="max-w-6xl w-full mx-auto px-3.5 sm:px-6 pt-4 sm:pt-6 flex-1">
+
+        <!-- ДЕСКТОПНАЯ НАВИГАЦИЯ (СКРЫТА НА ТЕЛЕФОНАХ, ТАМ НИЖНИЙ ТАБ-БАР) -->
+        <nav class="hidden md:flex items-center justify-between bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-2xs mb-6">
+            <div class="grid grid-cols-3 gap-1.5 w-full">
+                <button onclick="switchTab('finance')" id="deskTab-finance" class="py-2.5 px-4 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer bg-slate-900 text-white shadow-sm">
+                    <i class="fa-solid fa-wallet text-emerald-400"></i>
+                    <span>1. Бюджет и Расходы</span>
+                </button>
+                <button onclick="switchTab('fridge')" id="deskTab-fridge" class="py-2.5 px-4 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+                    <i class="fa-solid fa-seedling text-emerald-600"></i>
+                    <span>2. Умный Холодильник и Меню</span>
+                </button>
+                <button onclick="switchTab('report')" id="deskTab-report" class="py-2.5 px-4 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100">
+                    <i class="fa-solid fa-calendar-check text-violet-600"></i>
+                    <span>3. Аналитический отчет (Календарь и 3 стр.)</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- БENTO-ДАШБОРД ВЕРХНЕГО УРОВНЯ (Синхронизирован с выбранным месяцем и днем) -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5">
+            <!-- Карточка 1: Расходы за выбранный месяц -->
+            <div class="bento-card p-4 sm:p-5 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white border-none">
+                <div class="flex items-center justify-between text-xs text-slate-300 mb-1.5">
+                    <span id="dashMonthTitle">Октябрь 2026</span>
+                    <span class="w-7 h-7 rounded-xl bg-white/10 text-emerald-400 flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-trend-down"></i>
+                    </span>
+                </div>
+                <div class="font-display text-xl sm:text-2xl font-extrabold tracking-tight" id="statTotalSpent">0 BYN</div>
+                <div class="text-[11px] text-slate-300 mt-1.5 flex items-center justify-between">
+                    <span>План: <strong id="statTotalLimit" class="text-white">0 BYN</strong></span>
+                    <span id="statPercentBadge" class="px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">0%</span>
+                </div>
+            </div>
+
+            <!-- Карточка 2: Остаток бюджета и дневной ориентир -->
+            <div class="bento-card p-4 sm:p-5">
+                <div class="flex items-center justify-between text-xs font-medium text-slate-500 mb-1.5">
+                    <span>Свободный резерв</span>
+                    <span class="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <i class="fa-solid fa-shield-heart"></i>
+                    </span>
+                </div>
+                <div class="font-display text-xl sm:text-2xl font-extrabold text-emerald-600" id="statRemainingBudget">0 BYN</div>
+                <div class="text-[11px] text-slate-500 mt-1.5 truncate" id="statDailyNormHint">Норма в день: ~0 BYN</div>
+            </div>
+
+            <!-- Карточка 3: Выбранный календарный день (Кликабельно -> ведет в календарь отчета) -->
+            <div onclick="switchTab('report')" class="bento-card p-4 sm:p-5 cursor-pointer hover:border-violet-300 transition group">
+                <div class="flex items-center justify-between text-xs font-medium text-slate-500 mb-1.5">
+                    <span id="statSelectedDayLabel">За выбранный день</span>
+                    <span class="w-7 h-7 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition flex items-center justify-center">
+                        <i class="fa-solid fa-calendar-day"></i>
+                    </span>
+                </div>
+                <div class="font-display text-xl sm:text-2xl font-extrabold text-slate-900" id="statSelectedDaySpent">0 BYN</div>
+                <div class="text-[11px] text-violet-600 font-semibold mt-1.5 flex items-center gap-1">
+                    <span id="statSelectedDayCount">Открыть календарь трат</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </div>
+            </div>
+
+            <!-- Карточка 4: Умный холодильник и список покупок -->
+            <div onclick="switchTab('fridge')" class="bento-card p-4 sm:p-5 cursor-pointer hover:border-emerald-300 transition group">
+                <div class="flex items-center justify-between text-xs font-medium text-slate-500 mb-1.5">
+                    <span>Холодильник & Меню</span>
+                    <span class="w-7 h-7 rounded-xl bg-teal-50 text-teal-600 group-hover:bg-teal-600 group-hover:text-white transition flex items-center justify-center">
+                        <i class="fa-solid fa-Bowl-food"></i>
+                    </span>
+                </div>
+                <div class="font-display text-xl sm:text-2xl font-extrabold text-slate-900" id="statFridgeSummary">0 прод.</div>
+                <div class="text-[11px] text-emerald-700 font-semibold mt-1.5 truncate" id="statDietModeLabel">🌱 100% Растительный</div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- ЛЕНТА КАЛЕНДАРНЫХ ДНЕЙ МЕСЯЦА (РАБОТАЕТ И В БЮДЖЕТЕ, И В АНАЛИТИКЕ!)    -->
+        <!-- ======================================================================= -->
+        <section id="dayStripSection" class="bento-card p-3 sm:p-4 mb-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">
+                        <i class="fa-regular fa-calendar-check"></i>
+                    </span>
+                    <span class="text-xs sm:text-sm font-bold text-slate-800">Фильтр по дням месяца:</span>
+                    <span id="currentFilterBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-violet-600 text-white">
+                        Весь месяц
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="selectCalendarDate('ALL')" id="btnAllDays" class="btn-press text-xs font-bold px-3 py-1 rounded-xl bg-slate-900 text-white transition cursor-pointer">
+                        Все дни месяца
+                    </button>
+                    <input
+                        type="date"
+                        id="exactDateFilterInput"
+                        onchange="if(this.value) selectCalendarDate(this.value)"
+                        class="text-xs font-semibold bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-1 text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
+                        title="Выбрать конкретную дату в календаре"
+                    >
+                </div>
+            </div>
+
+            <!-- Горизонтальный скроллер дней месяца с индикаторами трат -->
+            <div id="horizontalDaysScroller" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                <!-- Генерируется динамически для выбранного месяца -->
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- ВКЛАДКА 1: БЮДЖЕТ И РАСХОДЫ                                             -->
+        <!-- ======================================================================= -->
+        <section id="module-finance" class="space-y-5 animate-view">
+
+            <!-- Умный ИИ-инсайт (Компактный современный баннер вместо громоздкого блока) -->
+            <div id="advisorBox" class="rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/15 flex items-center gap-3.5 transition-all">
+                <div id="advisorIcon" class="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-xs flex items-center justify-center text-xl shrink-0">
+                    <i class="fa-solid fa-sparkles"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span id="advisorBadge" class="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20">
+                            Смарт-ассистент бюджета
+                        </span>
+                    </div>
+                    <p id="advisorText" class="text-xs sm:text-sm font-medium leading-relaxed mt-1">
+                        Выберите любую категорию или введите трату одной строкой (например: «Продукты 35»). Все расчеты мгновенно обновятся!
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- ЛЕВАЯ КОЛОНКА (5 кол.): Добавление траты (Быстрая строка + Карточки-кнопки) -->
+                <div class="lg:col-span-5 space-y-5">
+
+                    <!-- Экспресс-ввод одной строкой -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <h2 class="font-display font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-bolt"></i>
+                                </span>
+                                <span>Быстрый ввод одной строкой</span>
+                            </h2>
+                            <span class="text-[11px] font-medium text-slate-400">Текст + Сумма</span>
+                        </div>
+                        <form onsubmit="handleQuickLineExpense(event)" class="flex gap-2 mt-2">
+                            <input
+                                type="text"
+                                id="quickExpenseInput"
+                                placeholder="Напр.: Продукты 42 или Кофе 6.5"
+                                class="flex-1 rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
+                            >
+                            <button type="submit" class="btn-press bg-slate-900 hover:bg-slate-800 text-white font-bold px-5 py-3 rounded-2xl text-sm shadow-sm transition shrink-0 cursor-pointer">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Ввод кнопками категорий с выбором даты -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="font-display font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-grip"></i>
+                                </span>
+                                <span>Категории расходов</span>
+                            </h2>
+                            <button onclick="openSettingsModal()" class="text-xs font-bold text-violet-600 hover:text-violet-700 flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-plus-circle"></i> Своя кнопка
+                            </button>
+                        </div>
+
+                        <!-- Сетка кнопок категорий -->
+                        <div id="categoryButtonsGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                            <!-- Генерируется через JS -->
+                        </div>
+
+                        <!-- Поля суммы, даты и комментария -->
+                        <form onsubmit="handleButtonExpense(event)" class="space-y-3 pt-3 border-t border-slate-100">
+                            <div class="grid grid-cols-12 gap-2.5">
+                                <div class="col-span-6">
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Сумма (<span class="currencyLabel">BYN</span>)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        id="btnExpenseAmount"
+                                        placeholder="0.00"
+                                        required
+                                        class="w-full rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-base font-extrabold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    >
+                                </div>
+                                <div class="col-span-6">
+                                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Дата операции</label>
+                                    <input
+                                        type="date"
+                                        id="btnExpenseDate"
+                                        required
+                                        class="w-full rounded-2xl bg-slate-50 border border-slate-200 px-3 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                    >
+                                </div>
+                            </div>
+
+                            <div>
+                                <input
+                                    type="text"
+                                    id="btnExpenseNote"
+                                    placeholder="Комментарий (напр.: чечевица, фрукты, такси...)"
+                                    class="w-full rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                                >
+                            </div>
+
+                            <button type="submit" class="btn-press w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded-2xl text-sm shadow-md shadow-indigo-500/20 transition flex items-center justify-center gap-2 cursor-pointer">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Добавить в «<span id="selectedCategoryLabel">Продукты</span>»</span>
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+
+                <!-- ПРАВАЯ КОЛОНКА (7 кол.): Лимиты месяца + Журнал за день/месяц -->
+                <div class="lg:col-span-7 space-y-5">
+
+                    <!-- Прогресс лимитов за активный месяц -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                            <div>
+                                <h2 class="font-display font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                                    <span>Лимиты на <span id="limitsMonthSub" class="text-violet-600">Октябрь 2026</span></span>
+                                </h2>
+                                <p class="text-xs text-slate-500">В каждом новом месяце лимиты рассчитываются с нуля</p>
+                            </div>
+                            <button onclick="openSettingsModal()" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">
+                                <i class="fa-solid fa-sliders mr-1"></i> Настроить лимиты
+                            </button>
+                        </div>
+
+                        <div id="categoryProgressList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Карточки прогресса категорий -->
+                        </div>
+                    </div>
+
+                    <!-- Лента операций (с фильтром по календарному дню и категории) -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
+                            <div class="flex items-center gap-2">
+                                <h2 class="font-display font-bold text-slate-900 text-sm sm:text-base">Операции</h2>
+                                <span id="expensesCountBadge" class="text-xs bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-full font-bold">0</span>
+                                <span id="activeDayHistoryTag" class="text-xs font-semibold text-violet-600"></span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <select id="expenseFilterSelect" onchange="renderFinanceModule()" class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-500">
+                                    <option value="ALL">Все категории</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="expenseHistoryContainer" class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                            <!-- Список транзакций -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- ВКЛАДКА 2: УМНЫЙ ХОЛОДИЛЬНИК, РАЦИОН И ПОКУПКИ                          -->
+        <!-- ======================================================================= -->
+        <section id="module-fridge" class="hidden space-y-5 animate-view">
+
+            <!-- Переключатель профиля питания -->
+            <div class="bento-card p-4 sm:p-5">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">Смарт-рацион</span>
+                        <h2 class="font-display font-bold text-slate-900 text-base sm:text-lg mt-1">Режим питания и подбор рецептов</h2>
+                        <p class="text-xs text-slate-500 mt-0.5" id="dietModeDescription">
+                            100% растительный рацион: контроль аминокислот белка, клетчатки, железа и Омега-3.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 shrink-0">
+                        <button onclick="setDietMode('vegan')" id="dietBtn-vegan" class="btn-press px-3.5 py-2.5 rounded-2xl font-bold text-xs border text-left transition cursor-pointer flex items-center gap-2.5">
+                            <span class="text-xl">🌱</span>
+                            <div>
+                                <div>Веган 100%</div>
+                                <div class="text-[10px] font-normal opacity-80">Пост + баланс БЖУ</div>
+                            </div>
+                        </button>
+                        <button onclick="setDietMode('student')" id="dietBtn-student" class="btn-press px-3.5 py-2.5 rounded-2xl font-bold text-xs border text-left transition cursor-pointer flex items-center gap-2.5">
+                            <span class="text-xl">🎓</span>
+                            <div>
+                                <div>Студент / Общага</div>
+                                <div class="text-[10px] font-normal opacity-80">Быстро, сытно, бюджетно</div>
+                            </div>
+                        </button>
+                        <button onclick="setDietMode('universal')" id="dietBtn-universal" class="btn-press px-3.5 py-2.5 rounded-2xl font-bold text-xs border text-left transition cursor-pointer flex items-center gap-2.5">
+                            <span class="text-xl">🥗</span>
+                            <div>
+                                <div>Универсальный ПП</div>
+                                <div class="text-[10px] font-normal opacity-80">Здоровый баланс</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Левая колонка: Холодильник + Список покупок -->
+                <div class="lg:col-span-5 space-y-5">
+
+                    <!-- Мои запасы в холодильнике -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-display font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-box-open"></i>
+                                </span>
+                                <span>Что есть дома</span>
+                            </h3>
+                            <span id="fridgeTotalBadge" class="text-xs font-bold bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full">0 поз.</span>
+                        </div>
+
+                        <form onsubmit="handleAddFridgeItem(event)" class="flex gap-2 my-3">
+                            <input
+                                type="text"
+                                id="fridgeInputLine"
+                                placeholder="Напр.: Гречка 400 г, Тофу 200 г"
+                                class="flex-1 rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            >
+                            <button type="submit" class="btn-press bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2.5 rounded-2xl text-xs sm:text-sm transition shrink-0 cursor-pointer">
+                                + Запас
+                            </button>
+                        </form>
+
+                        <!-- Чипсы быстрого добавления -->
+                        <div class="mb-3">
+                            <div class="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1.5">
+                                <span>Быстрое добавление в 1 клик:</span>
+                                <button onclick="openSettingsModal()" class="text-violet-600 hover:underline cursor-pointer">+ Настроить</button>
+                            </div>
+                            <div id="quickFridgeButtonsContainer" class="flex flex-wrap gap-1.5"></div>
+                        </div>
+
+                        <div id="fridgeInventoryList" class="space-y-1.5 max-h-60 overflow-y-auto pr-1 pt-2 border-t border-slate-100"></div>
+                    </div>
+
+                    <!-- Список покупок в магазин -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-display font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                                <span class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+                                    <i class="fa-solid fa-cart-shopping"></i>
+                                </span>
+                                <span>Список покупок</span>
+                            </h3>
+                            <span id="shoppingBadgeCount" class="text-xs font-bold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full">0</span>
+                        </div>
+
+                        <form onsubmit="handleAddShoppingItem(event)" class="flex gap-2 my-3">
+                            <input
+                                type="text"
+                                id="shoppingInputLine"
+                                placeholder="Что купить? (Нут, Орехи, Овощи...)"
+                                class="flex-1 rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                            <button type="submit" class="btn-press bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-2xl text-xs sm:text-sm transition shrink-0 cursor-pointer">
+                                В список
+                            </button>
+                        </form>
+
+                        <label class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200/60 text-xs text-slate-700 font-medium cursor-pointer mb-3">
+                            <input type="checkbox" id="autoExpenseOnBuy" checked class="rounded text-emerald-600 focus:ring-emerald-500">
+                            <span>При нажатии «Куплено» записывать трату в Бюджет</span>
+                        </label>
+
+                        <div id="shoppingListContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                    </div>
+
+                </div>
+
+                <!-- Правая колонка: Баланс нутриентов + Подходящие рецепты -->
+                <div class="lg:col-span-7 space-y-5">
+
+                    <!-- Виджет нутриентов -->
+                    <div class="rounded-3xl p-5 bg-gradient-to-br from-slate-900 via-emerald-950 to-teal-950 text-white shadow-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-heart-pulse"></i> Нутри-аудит холодильника
+                            </span>
+                            <span class="text-[11px] bg-white/10 px-2.5 py-0.5 rounded-full">БЖУ + Микроэлементы</span>
+                        </div>
+                        <p id="nutritionAdvisorText" class="text-xs sm:text-sm text-slate-200 leading-relaxed mb-4"></p>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                            <div class="bg-white/10 rounded-2xl p-2.5">
+                                <div class="text-[10px] text-emerald-200 uppercase">Белковый профиль</div>
+                                <div class="font-display font-extrabold text-sm mt-0.5" id="nutriProteinStat">—</div>
+                            </div>
+                            <div class="bg-white/10 rounded-2xl p-2.5">
+                                <div class="text-[10px] text-emerald-200 uppercase">Клетчатка</div>
+                                <div class="font-display font-extrabold text-sm mt-0.5" id="nutriFiberStat">—</div>
+                            </div>
+                            <div class="bg-white/10 rounded-2xl p-2.5">
+                                <div class="text-[10px] text-emerald-200 uppercase">Омега-3 и Жиры</div>
+                                <div class="font-display font-extrabold text-sm mt-0.5" id="nutriFatsStat">—</div>
+                            </div>
+                            <div class="bg-white/10 rounded-2xl p-2.5">
+                                <div class="text-[10px] text-emerald-200 uppercase">Микроэлементы</div>
+                                <div class="font-display font-extrabold text-sm mt-0.5" id="nutriVitStat">Fe, Mg, B9, C</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Карточки рецептов -->
+                    <div class="bento-card p-4 sm:p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-display font-bold text-slate-900 text-sm sm:text-base">Блюда из ваших запасов</h3>
+                                <p class="text-xs text-slate-500">Нажмите на недостающий ингредиент, чтобы отправить его в список покупок</p>
+                            </div>
+                        </div>
+                        <div id="recipesContainer" class="space-y-3.5"></div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- ВКЛАДКА 3: АНАЛИТИЧЕСКИЙ ОТЧЕТ (КАЛЕНДАРЬ ДНЕЙ + 3 СТРАНИЦЫ ОТЧЕТА)     -->
+        <!-- ======================================================================= -->
+        <section id="module-report" class="hidden space-y-6 animate-view">
+
+            <!-- ВЕРХНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ АНАЛИТИЧЕСКИМ ОТЧЕТОМ -->
+            <div class="bento-card p-4 sm:p-5 bg-gradient-to-r from-violet-950 via-indigo-950 to-slate-900 text-white border-none">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-violet-500/30 text-violet-200 border border-violet-400/30">
+                                Интерактивная аналитика (3 страницы)
+                            </span>
+                            <span id="reportPeriodPill" class="text-xs font-bold text-emerald-300">Октябрь 2026</span>
+                        </div>
+                        <h2 class="font-display font-extrabold text-lg sm:text-xl mt-1">Календарь расходов по дням и сводный аудит</h2>
+                        <p class="text-xs text-slate-300 mt-0.5">
+                            Нажмите на любой день в календаре ниже, чтобы посмотреть все траты и аналитику именно за этот календарный день!
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <button onclick="copyReportToClipboard()" class="btn-press bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-2xl text-xs sm:text-sm transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                            <i class="fa-brands fa-telegram text-base"></i>
+                            <span>Скопировать отчет</span>
+                        </button>
+                        <button onclick="exportDataJson()" class="btn-press bg-white/10 hover:bg-white/20 text-white font-semibold px-3.5 py-2.5 rounded-2xl text-xs transition cursor-pointer" title="Скачать резервную копию базы данных">
+                            <i class="fa-solid fa-download mr-1"></i> Бэкап
+                        </button>
+                        <label class="btn-press bg-white/10 hover:bg-white/20 text-white font-semibold px-3.5 py-2.5 rounded-2xl text-xs transition cursor-pointer" title="Загрузить базу данных из файла">
+                            <i class="fa-solid fa-upload mr-1"></i> Импорт
+                            <input type="file" accept=".json" onchange="importDataJson(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- СТРАНИЦА 1 ОТЧЕТА: КАЛЕНДАРНАЯ МАТРИЦА МЕСЯЦА И ДЕТАЛИЗАЦИЯ ВЫБРАННОГО ДНЯ -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Интерактивный календарь месяца (7 колонок) -->
+                <div class="lg:col-span-7 bento-card p-4 sm:p-5">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase text-violet-600">Страница 1 из 3 • Календарная сетка</span>
+                            <h3 class="font-display font-bold text-slate-900 text-base">Карта трат по дням (<span id="calendarGridMonthTitle">Октябрь 2026</span>)</h3>
+                        </div>
+                        <div class="flex items-center gap-2 text-[11px] text-slate-500">
+                            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-emerald-100 border border-emerald-300"></span> В норме</span>
+                            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-xs bg-rose-100 border border-rose-300"></span> Выше нормы дня</span>
+                        </div>
+                    </div>
+
+                    <!-- Дни недели -->
+                    <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-slate-400 mb-1.5">
+                        <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div class="text-rose-400">Сб</div><div class="text-rose-400">Вс</div>
+                    </div>
+
+                    <!-- Сетка чисел месяца -->
+                    <div id="reportCalendarGrid" class="grid grid-cols-7 gap-1.5">
+                        <!-- Ячейки календаря генерируются через JS -->
+                    </div>
+                </div>
+
+                <!-- СТРАНИЦА 2 ОТЧЕТА: Фокус-разбор выбранного календарного дня (5 колонок) -->
+                <div class="lg:col-span-5 bento-card p-4 sm:p-5 flex flex-col justify-between border-2 border-violet-200/80">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div>
+                                <span class="text-[11px] font-bold uppercase text-emerald-600">Страница 2 из 3 • Фокус дня</span>
+                                <h3 class="font-display font-extrabold text-slate-900 text-base sm:text-lg" id="reportDayFocusTitle">Все дни месяца</h3>
+                            </div>
+                            <button onclick="jumpToAddExpenseForSelectedDay()" class="btn-press text-xs font-bold px-3 py-1.5 rounded-xl bg-violet-100 hover:bg-violet-200 text-violet-700 transition cursor-pointer">
+                                + Внести трату за этот день
+                            </button>
+                        </div>
+
+                        <!-- Сводка за выбранный день -->
+                        <div id="reportDaySummaryMetrics" class="grid grid-cols-2 gap-2.5 mb-4">
+                            <!-- Заполняется через JS -->
+                        </div>
+
+                        <!-- Список покупок/трат конкретно за выбранный календарный день -->
+                        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Детализация чеков за выбранный период:</div>
+                        <div id="reportDayTransactionsList" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                            <!-- Заполняется через JS -->
+                        </div>
+                    </div>
+
+                    <!-- Вердикт советника по конкретному дню -->
+                    <div id="reportDayVerdictBox" class="mt-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 leading-relaxed">
+                        Выберите любой день в календаре слева, чтобы увидеть персональный разбор трат за конкретную дату.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- СТРАНИЦА 3 ОТЧЕТА: СТРУКТУРА КАТЕГОРИЙ, АУДИТ ПИТАНИЯ И ТЕКСТОВЫЙ ДОКУМЕНТ (2-3 СТР.) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Визуальная разбивка по статьям и питанию (6 колонок) -->
+                <div class="lg:col-span-6 bento-card p-4 sm:p-5 space-y-4">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-indigo-600">Страница 3 из 3 • Структура и Рацион</span>
+                        <h3 class="font-display font-bold text-slate-900 text-base">Распределение бюджета и ревизия питания</h3>
+                    </div>
+
+                    <div id="reportCategoriesBreakdown" class="space-y-2.5">
+                        <!-- Заполняется через JS -->
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100">
+                        <div class="text-xs font-bold text-slate-700 mb-2">Рекомендации на следующий месяц:</div>
+                        <ul id="reportRecommendationsList" class="space-y-1.5 text-xs text-slate-600">
+                            <!-- Заполняется через JS -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Готовый печатный 3-страничный документ для Telegram / экспорта (6 колонок) -->
+                <div class="lg:col-span-6 bento-card p-4 sm:p-5 flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase text-slate-400">Экспорт документа</span>
+                            <h3 class="font-display font-bold text-slate-900 text-base">Полный текст отчета (для Telegram / Печати)</h3>
+                        </div>
+                        <button onclick="copyReportToClipboard()" class="text-xs font-bold text-violet-600 hover:underline cursor-pointer">
+                            <i class="fa-regular fa-copy mr-1"></i> Копировать
+                        </button>
+                    </div>
+
+                    <div id="analyticalReportOutput" class="flex-1 bg-slate-50 text-slate-800 rounded-2xl p-4 font-sans text-xs leading-relaxed whitespace-pre-wrap overflow-y-auto max-h-80 border border-slate-200/80">
+                        <!-- Чистый структурированный отчет -->
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- ======================================================================= -->
+    <!-- МОБИЛЬНЫЙ НИЖНИЙ ТАБ-БАР (УДОБНОЕ УПРАВЛЕНИЕ ОДНИМ ПАЛЬЦЕМ НА ТЕЛЕФОНЕ)  -->
+    <!-- ======================================================================= -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 glass-bar border-t border-slate-200/90 px-2 py-1.5">
+        <div class="grid grid-cols-4 gap-1 max-w-md mx-auto">
+            <button onclick="switchTab('finance')" id="mobTab-finance" class="btn-press flex flex-col items-center justify-center py-1.5 rounded-2xl text-violet-600 font-bold transition cursor-pointer">
+                <i class="fa-solid fa-wallet text-base mb-0.5"></i>
+                <span class="text-[10px]">Бюджет</span>
+            </button>
+            <button onclick="switchTab('fridge')" id="mobTab-fridge" class="btn-press flex flex-col items-center justify-center py-1.5 rounded-2xl text-slate-500 font-medium transition cursor-pointer">
+                <i class="fa-solid fa-seedling text-base mb-0.5"></i>
+                <span class="text-[10px]">Холодильник</span>
+            </button>
+            <button onclick="switchTab('report')" id="mobTab-report" class="btn-press flex flex-col items-center justify-center py-1.5 rounded-2xl text-slate-500 font-medium transition cursor-pointer">
+                <i class="fa-solid fa-calendar-days text-base mb-0.5"></i>
+                <span class="text-[10px]">Отчет и Дни</span>
+            </button>
+            <button onclick="openSettingsModal()" class="btn-press flex flex-col items-center justify-center py-1.5 rounded-2xl text-slate-500 font-medium transition cursor-pointer">
+                <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+                <span class="text-[10px]">Настройки</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 1: ОЧИСТКА ПРИМЕРОВ (НАЧАТЬ С НУЛЯ)                      -->
+    <!-- ======================================================================= -->
+    <div id="clearConfirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-view">
+            <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center text-2xl mb-4">
+                <i class="fa-solid fa-broom"></i>
+            </div>
+            <h3 class="font-display text-lg font-extrabold text-slate-900">Очистить примеры и начать с нуля?</h3>
+            <p class="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+                Все демонстрационные траты за Сентябрь и Октябрь, а также тестовые продукты в холодильнике будут удалены. Вы сможете вести свой личный бюджет с чистого листа.
+            </p>
+
+            <label class="mt-4 p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 cursor-pointer text-xs font-semibold text-slate-700">
+                <input type="checkbox" id="keepCustomButtonsCheckbox" checked class="rounded text-violet-600 focus:ring-violet-500">
+                <span>Сохранить кнопки категорий и их лимиты</span>
+            </label>
+
+            <div class="flex flex-col sm:flex-row gap-2.5 mt-6">
+                <button onclick="executeClearAllData()" class="btn-press flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-4 rounded-2xl text-sm shadow-sm transition cursor-pointer">
+                    Очистить всё (Старт с 0)
+                </button>
+                <button onclick="closeClearConfirmModal()" class="btn-press bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-3 px-4 rounded-2xl text-sm transition cursor-pointer">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 2: НАСТРОЙКА СВОИХ КНОПОК, ЛИМИТОВ И ВАЛЮТЫ              -->
+    <!-- ======================================================================= -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 my-8 animate-view max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-extrabold text-slate-900 text-base sm:text-lg">Конструктор кнопок и лимитов</h3>
+                        <p class="text-xs text-slate-500">Настройте валюту, свои категории и быстрые продукты</p>
+                    </div>
+                </div>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="overflow-y-auto py-4 space-y-6 pr-1 flex-1">
+                <!-- 1. Валюта -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">1. Валюта учета</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <button onclick="setCurrency('BYN')" id="currBtn-BYN" class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm border transition cursor-pointer">BYN</button>
+                        <button onclick="setCurrency('₽')" id="currBtn-₽" class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm border transition cursor-pointer">₽ (RUB)</button>
+                        <button onclick="setCurrency('$')" id="currBtn-$" class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm border transition cursor-pointer">$ (USD)</button>
+                        <button onclick="setCurrency('€')" id="currBtn-€" class="py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm border transition cursor-pointer">€ (EUR)</button>
+                    </div>
+                </div>
+
+                <!-- 2. Категории и месячные лимиты -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">2. Кнопки категорий и лимиты на месяц</label>
+                    <div id="settingsCategoriesList" class="space-y-2 mb-3"></div>
+
+                    <form onsubmit="handleAddCustomCategory(event)" class="bg-slate-50 p-3 rounded-2xl border border-slate-200/80 grid grid-cols-1 sm:grid-cols-12 gap-2">
+                        <input type="text" id="newCatEmoji" placeholder="🛍️" maxlength="4" class="sm:col-span-2 rounded-xl border border-slate-200 px-2.5 py-2 text-center text-sm bg-white">
+                        <input type="text" id="newCatName" placeholder="Название категории" required class="sm:col-span-5 rounded-xl border border-slate-200 px-3 py-2 text-xs sm:text-sm bg-white">
+                        <input type="number" id="newCatLimit" placeholder="Лимит в месяц" min="1" step="1" required class="sm:col-span-3 rounded-xl border border-slate-200 px-3 py-2 text-xs sm:text-sm bg-white">
+                        <button type="submit" class="sm:col-span-2 bg-violet-600 hover:bg-violet-500 text-white font-bold py-2 px-3 rounded-xl text-xs transition cursor-pointer">
+                            + Добавить
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 3. Быстрые кнопки холодильника -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">3. Быстрые кнопки для «Умного холодильника»</label>
+                    <div id="settingsQuickFridgeList" class="flex flex-wrap gap-1.5 mb-3"></div>
+                    <form onsubmit="handleAddQuickFridgeBtn(event)" class="flex gap-2">
+                        <input type="text" id="newQuickFridgeName" placeholder="Напр.: Авокадо (2 шт) или Нут (400 г)" required class="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-xs sm:text-sm">
+                        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition cursor-pointer">
+                            + Кнопка
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeSettingsModal()" class="btn-press bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-6 rounded-2xl text-sm transition cursor-pointer">
+                    Готово
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 3: ОТМЕТКА ПОКУПКИ В МАГАЗИНЕ                            -->
+    <!-- ======================================================================= -->
+    <div id="buyItemModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-view">
+            <h3 class="font-display font-extrabold text-slate-900 text-base">Отметить купленным</h3>
+            <p class="text-xs text-slate-500 mt-1" id="buyModalItemTitle">Продукт: —</p>
+
+            <div class="mt-4">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                    Стоимость покупки (<span class="currencyLabel">BYN</span>) <span class="text-slate-400 font-normal">(необязательно)</span>
+                </label>
+                <input type="number" step="0.01" min="0" id="buyModalPriceInput" placeholder="0.00" class="w-full rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 text-sm font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+
+            <div class="flex gap-2 mt-5">
+                <button onclick="confirmBuyShoppingItem()" class="btn-press flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-2xl text-xs sm:text-sm transition cursor-pointer">
+                    В холодильник!
+                </button>
+                <button onclick="closeBuyItemModal()" class="btn-press bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 px-4 rounded-2xl text-xs sm:text-sm transition cursor-pointer">
+                    Отмена
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- МОДАЛЬНОЕ ОКНО 4: ШПАРГАЛКА GITHUB PAGES И РЕЖИМ РАЗРАБОТЧИКА           -->
+    <!-- ======================================================================= -->
+    <div id="devModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-100 my-8 animate-view">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                        <i class="fa-brands fa-github"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-extrabold text-slate-900 text-base">Публикация на GitHub Pages и под капотом JS</h3>
+                        <p class="text-xs text-slate-500">Скрыто с главного экрана для чистоты молодежного дизайна</p>
+                    </div>
+                </div>
+                <button onclick="closeDevModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 py-4 text-xs sm:text-sm text-slate-700">
+                <div class="p-3.5 rounded-2xl bg-violet-50 border border-violet-100 text-violet-950">
+                    <strong>Что обновлено в v2.0 по ревью Паши:</strong>
+                    <ul class="list-disc list-inside mt-1.5 space-y-1 text-xs">
+                        <li>Добавлен переключатель месяцев и лет (<code class="font-bold">◀ Сентябрь | Октябрь | Ноябрь ▶</code>). При наступлении нового месяца бюджет автоматически считается с нуля, сохраняя прошлые месяцы в архиве.</li>
+                        <li>В раздел <strong>«3. Аналитический отчет»</strong> встроена интерактивная календарная сетка по дням. Клик по любому дню показывает все траты именно за этот календарный день.</li>
+                        <li>Убраны черные «программистские» окна с главного экрана, добавлен мобильный нижний таб-бар.</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-900 mb-2">Как обновить файл на GitHub Pages:</h4>
+                    <ol class="space-y-2 text-xs text-slate-600 list-decimal list-inside">
+                        <li>Сохраните этот обновленный код на компьютер как файл <code class="bg-slate-100 px-1.5 py-0.5 rounded font-bold text-slate-800">index.html</code>.</li>
+                        <li>В своем репозитории на GitHub нажмите <strong>Add file → Upload files</strong>, перетащите новый <code class="font-bold">index.html</code> и нажмите <strong>Commit changes</strong>.</li>
+                        <li>Через 40–60 секунд обновите страницу по вашей ссылке — новая версия 2.0 заработает на телефонах и компьютерах!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeDevModal()" class="btn-press bg-slate-900 text-white font-bold py-2.5 px-5 rounded-2xl text-xs sm:text-sm cursor-pointer">
+                    Закрыть
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- ЯДРО ПРИЛОЖЕНИЯ НА JAVASCRIPT (С ПОДДЕРЖКОЙ МЕСЯЦЕВ И КАЛЕНДАРЯ ДНЕЙ)    -->
+    <!-- ======================================================================= -->
+    <script>
+        const STORAGE_KEY = 'smart_fin_fridge_app_v2';
+
+        const MONTH_NAMES_RU = [
+            'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+            'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+        ];
+        const MONTH_NAMES_GENITIVE = [
+            'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+            'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+        ];
+
+        /**
+         * Определяем реальную текущую дату устройства в формате YYYY-MM-DD и YYYY-MM
+         */
+        function getSystemTodayISO() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        function getSystemMonthISO() {
+            return getSystemTodayISO().slice(0, 7);
+        }
+
+        /**
+         * СТАРТОВЫЕ ДЕМО-ДАННЫЕ (Включают траты по разным дням Октября 2026 и Сентября 2026,
+         * чтобы сразу было видно, как работает переключение месяцев и календарь по дням!)
+         */
+        function getInitialDemoState() {
+            const currentMonth = getSystemMonthISO(); // Например, "2026-10"
+            const [yr, mo] = currentMonth.split('-').map(Number);
+            const prevDate = new Date(yr, mo - 2, 1);
+            const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+            return {
+                isDemoMode: true,
+                currency: 'BYN',
+                selectedCategory: 'Продукты',
+                dietMode: 'vegan',
+                activeMonth: currentMonth, // Текущий выбранный месяц YYYY-MM
+                selectedDate: 'ALL',       // 'ALL' или конкретный день 'YYYY-MM-DD'
+                categories: [
+                    { id: 'cat_food', name: 'Продукты', emoji: '🥦', limit: 450 },
+                    { id: 'cat_util', name: 'Коммуналка', emoji: '🏠', limit: 180 },
+                    { id: 'cat_comm', name: 'Связь и Инет', emoji: '📱', limit: 60 },
+                    { id: 'cat_sport', name: 'Спорт и ЗОЖ', emoji: '💪', limit: 120 },
+                    { id: 'cat_trans', name: 'Транспорт', emoji: '🚌', limit: 90 },
+                    { id: 'cat_other', name: 'Досуг и кофе', emoji: '☕', limit: 100 }
+                ],
+                expenses: [
+                    // Примеры за ПРОШЛЫЙ месяц (чтобы протестировать переключение месяцев ◀)
+                    { id: 'exp_p1', category: 'Продукты', amount: 185, note: 'Закупка продуктов за прошлый месяц', date: `${prevMonth}-14`, time: '18:30' },
+                    { id: 'exp_p2', category: 'Коммуналка', amount: 165, note: 'Оплата ЖКУ за прошлый месяц', date: `${prevMonth}-20`, time: '11:15' },
+                    { id: 'exp_p3', category: 'Связь и Инет', amount: 45, note: 'Домашний интернет и связь', date: `${prevMonth}-25`, time: '16:00' },
+
+                    // Примеры по разным календарным дням ТЕКУЩЕГО месяца
+                    { id: 'exp_1', category: 'Продукты', amount: 54, note: 'Красная чечевица, бурый рис, клюква, тофу', date: `${currentMonth}-05`, time: '18:20' },
+                    { id: 'exp_2', category: 'Транспорт', amount: 22, note: 'Пополнение проездного и метро', date: `${currentMonth}-10`, time: '09:15' },
+                    { id: 'exp_3', category: 'Коммуналка', amount: 120, note: 'ЖКУ, вода и электроэнергия', date: `${currentMonth}-15`, time: '10:30' },
+                    { id: 'exp_4', category: 'Продукты', amount: 38, note: 'Овсяные хлопья, грецкие орехи, брокколи, яблоки', date: `${currentMonth}-21`, time: '19:05' },
+                    { id: 'exp_5', category: 'Связь и Инет', amount: 28, note: 'Оплата интернета и мобильного тарифа', date: `${currentMonth}-25`, time: '14:40' },
+                    { id: 'exp_6', category: 'Спорт и ЗОЖ', amount: 45, note: 'Бассейн и витаминный комплекс B12 + D3', date: `${currentMonth}-27`, time: '19:00' },
+                    { id: 'exp_7', category: 'Продукты', amount: 32, note: 'Свежая зелень, нут, льняное масло, бананы', date: `${currentMonth}-29`, time: '12:15' },
+                    { id: 'exp_8', category: 'Досуг и кофе', amount: 14, note: 'Растительный капучино на миндальном молоке', date: `${currentMonth}-29`, time: '15:40' }
+                ],
+                fridgeItems: [
+                    { id: 'fr_1', name: 'Рис бурый', amount: '300 г' },
+                    { id: 'fr_2', name: 'Клюква замороженная', amount: '150 г' },
+                    { id: 'fr_3', name: 'Масло растительное', amount: '500 мл' },
+                    { id: 'fr_4', name: 'Чечевица красная', amount: '350 г' },
+                    { id: 'fr_5', name: 'Овсяные хлопья', amount: '400 г' },
+                    { id: 'fr_6', name: 'Грецкие орехи', amount: '120 г' }
+                ],
+                quickFridgeButtons: [
+                    'Гречка (500 г)',
+                    'Нут (300 г)',
+                    'Тофу (250 г)',
+                    'Морковь и лук (400 г)',
+                    'Семена льна (100 г)',
+                    'Бананы (3 шт)',
+                    'Капуста брокколи (300 г)'
+                ],
+                shoppingList: [
+                    { id: 'sh_1', name: 'Тофу натуральный (250 г)' },
+                    { id: 'sh_2', name: 'Морковь и лук (500 г)' },
+                    { id: 'sh_3', name: 'Семена льна (150 г)' }
+                ]
+            };
+        }
+
+        const RECIPES_DATABASE = [
+            {
+                id: 'rec_1',
+                title: 'Пряный дал из красной чечевицы с рисом',
+                profiles: ['vegan', 'student', 'universal'],
+                badge: '🌱 Полный аминокислотный профиль',
+                time: '25 мин',
+                kcal: 410, protein: 19, fats: 11, carbs: 58, fiber: 11.5,
+                vitamins: 'Железо (Fe), B9, Магний, Цинк',
+                ingredientsDisplay: [
+                    { key: 'чечевица', label: 'Чечевица красная (150 г)' },
+                    { key: 'рис', label: 'Рис (100 г)' },
+                    { key: 'масло', label: 'Масло растительное (1 ст.л.)' },
+                    { key: 'морковь', label: 'Морковь и лук (150 г)' }
+                ],
+                instructions: 'Сочетание злаков (рис) и бобовых (чечевица) дает 100% полноценный растительный белок. Промойте крупы и потушите с морковью и специями 20 минут под крышкой.'
+            },
+            {
+                id: 'rec_2',
+                title: 'Энергетическая овсянка с клюквой и грецкими орехами',
+                profiles: ['vegan', 'student', 'universal'],
+                badge: '⚡ Омега-3 и Витамин C',
+                time: '10 мин',
+                kcal: 385, protein: 12, fats: 15, carbs: 52, fiber: 8.2,
+                vitamins: 'Витамин C, Омега-3, Витамин B1',
+                ingredientsDisplay: [
+                    { key: 'овсян', label: 'Овсяные хлопья (80 г)' },
+                    { key: 'клюква', label: 'Клюква замороженная (50 г)' },
+                    { key: 'орех', label: 'Грецкие орехи (30 г)' }
+                ],
+                instructions: 'Залейте овсяные хлопья кипятком на 7 минут. Добавьте клюкву в самом конце (чтобы сохранить витамин C) и посыпьте рублеными грецкими орехами.'
+            },
+            {
+                id: 'rec_3',
+                title: 'Сытный боул с гречкой, тофу и брокколи',
+                profiles: ['vegan', 'universal'],
+                badge: '💪 Высокобелковый фитнес-боул',
+                time: '20 мин',
+                kcal: 430, protein: 24, fats: 14, carbs: 50, fiber: 9.8,
+                vitamins: 'Кальций (Ca), Железо, Витамин K и C',
+                ingredientsDisplay: [
+                    { key: 'гречк', label: 'Гречка (120 г)' },
+                    { key: 'тофу', label: 'Тофу (150 г)' },
+                    { key: 'брокколи', label: 'Капуста брокколи (150 г)' },
+                    { key: 'масло', label: 'Масло растительное (1 ст.л.)' }
+                ],
+                instructions: 'Отварите гречку. Быстро обжарьте кубики тофу и брокколи 6–7 минут на сковороде. Отличный источник белка и легкоусвояемого кальция.'
+            },
+            {
+                id: 'rec_4',
+                title: 'Студенческий экспресс-плов с нутом в одной кастрюле',
+                profiles: ['vegan', 'student', 'universal'],
+                badge: '🎓 Топ для общежития (на 2 дня)',
+                time: '30 мин',
+                kcal: 445, protein: 16, fats: 12, carbs: 68, fiber: 10.4,
+                vitamins: 'Витамины группы B, Калий, Марганец',
+                ingredientsDisplay: [
+                    { key: 'рис', label: 'Рис (150 г)' },
+                    { key: 'нут', label: 'Нут (150 г)' },
+                    { key: 'морковь', label: 'Морковь и лук (150 г)' },
+                    { key: 'масло', label: 'Масло растительное (2 ст.л.)' }
+                ],
+                instructions: 'В одной глубокой сковороде или мультиварке пассеруем морковь с луком, засыпаем рис, нут и воду 1:2. Готовим под крышкой 20 минут.'
+            }
+        ];
+
+        let appState = loadStateFromStorage();
+        let activeTab = 'finance';
+        let pendingBuyShoppingId = null;
+
+        /**
+         * ЗАГРУЗКА И МИГРАЦИЯ СОСТОЯНИЯ (С АВТООПРЕДЕЛЕНИЕМ МЕСЯЦА)
+         */
+        function loadStateFromStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) {
+                    const demo = getInitialDemoState();
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
+                    return demo;
+                }
+                const parsed = JSON.parse(raw);
+                if (!parsed.activeMonth) parsed.activeMonth = getSystemMonthISO();
+                if (!parsed.selectedDate) parsed.selectedDate = 'ALL';
+                return parsed;
+            } catch (e) {
+                return getInitialDemoState();
+            }
+        }
+
+        function saveStateToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        /**
+         * ФОРМАТИРОВАНИЕ ДАТ И МЕСЯЦЕВ
+         */
+        function formatMonthTitle(yyyyMm) {
+            if (!yyyyMm || !yyyyMm.includes('-')) return 'Октябрь 2026';
+            const [y, m] = yyyyMm.split('-').map(Number);
+            return `${MONTH_NAMES_RU[m - 1] || 'Месяц'} ${y}`;
+        }
+
+        function formatHumanDate(yyyyMmDd) {
+            if (!yyyyMmDd || yyyyMmDd === 'ALL') return 'Все дни месяца';
+            const parts = yyyyMmDd.split('-').map(Number);
+            if (parts.length < 3) return yyyyMmDd;
+            const [y, m, d] = parts;
+            return `${d} ${MONTH_NAMES_GENITIVE[m - 1]} ${y}`;
+        }
+
+        function getDaysInMonth(yyyyMm) {
+            const [y, m] = yyyyMm.split('-').map(Number);
+            return new Date(y, m, 0).getDate();
+        }
+
+        /**
+         * ПЕРЕКЛЮЧЕНИЕ МЕСЯЦЕВ (Решение проблемы: "не понятно как менять месяцы")
+         */
+        function shiftMonth(delta) {
+            const [y, m] = appState.activeMonth.split('-').map(Number);
+            const d = new Date(y, m - 1 + delta, 1);
+            const newMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            setActiveMonth(newMonth);
+        }
+
+        function handleMonthPickerChange(val) {
+            if (!val) return;
+            setActiveMonth(val);
+        }
+
+        function setActiveMonth(newMonth) {
+            appState.activeMonth = newMonth;
+            appState.selectedDate = 'ALL'; // Показываем весь выбранный месяц целиком
+            saveStateToStorage();
+            syncDateInputsWithActivePeriod();
+            refreshAllViews();
+            showToast(`Открыт период: ${formatMonthTitle(newMonth)}`, 'success');
+        }
+
+        function jumpToToday() {
+            const todayISO = getSystemTodayISO();
+            const currentMonth = todayISO.slice(0, 7);
+            appState.activeMonth = currentMonth;
+            appState.selectedDate = todayISO;
+            saveStateToStorage();
+            syncDateInputsWithActivePeriod();
+            refreshAllViews();
+            showToast(`Выбрана сегодняшняя дата: ${formatHumanDate(todayISO)}`, 'success');
+        }
+
+        /**
+         * ВЫБОР КОНКРЕТНОГО КАЛЕНДАРНОГО ДНЯ (Синхронизирован между Бюджетом и Аналитическим отчетом!)
+         */
+        function selectCalendarDate(dateOrAll) {
+            if (dateOrAll !== 'ALL' && dateOrAll.length === 10) {
+                const monthPart = dateOrAll.slice(0, 7);
+                if (monthPart !== appState.activeMonth) {
+                    appState.activeMonth = monthPart;
+                }
+            }
+            appState.selectedDate = dateOrAll;
+            saveStateToStorage();
+            syncDateInputsWithActivePeriod();
+            refreshAllViews();
+        }
+
+        function syncDateInputsWithActivePeriod() {
+            const monthPicker = document.getElementById('monthPickerInput');
+            if (monthPicker) monthPicker.value = appState.activeMonth;
+
+            const exactDateInput = document.getElementById('exactDateFilterInput');
+            if (exactDateInput) {
+                exactDateInput.value = appState.selectedDate !== 'ALL' ? appState.selectedDate : '';
+            }
+
+            const btnExpDate = document.getElementById('btnExpenseDate');
+            if (btnExpDate) {
+                if (appState.selectedDate !== 'ALL') {
+                    btnExpDate.value = appState.selectedDate;
+                } else {
+                    const sysToday = getSystemTodayISO();
+                    btnExpDate.value = sysToday.startsWith(appState.activeMonth)
+                        ? sysToday
+                        : `${appState.activeMonth}-01`;
+                }
+            }
+        }
+
+        /**
+         * ПОЛУЧЕНИЕ РАСХОДОВ ЗА АКТИВНЫЙ МЕСЯЦ И ЗА ВЫБРАННЫЙ ДЕНЬ
+         */
+        function getMonthExpenses(yyyyMm = appState.activeMonth) {
+            return appState.expenses.filter(exp => String(exp.date || '').startsWith(yyyyMm));
+        }
+
+        function getSelectedDayOrMonthExpenses() {
+            const monthExps = getMonthExpenses(appState.activeMonth);
+            if (appState.selectedDate === 'ALL') return monthExps;
+            return monthExps.filter(exp => String(exp.date || '').slice(0, 10) === appState.selectedDate);
+        }
+
+        /**
+         * ОБНОВЛЕНИЕ ВСЕХ КОМПОНЕНТОВ ИНТЕРФЕЙСА
+         */
+        function refreshAllViews() {
+            updateTopDashboardAndHeader();
+            renderHorizontalDayStrip();
+            renderFinanceModule();
+            renderFridgeModule();
+            renderAnalyticalReportModule();
+        }
+
+        function updateTopDashboardAndHeader() {
+            const cur = appState.currency || 'BYN';
+            document.querySelectorAll('.currencyLabel').forEach(el => el.textContent = cur);
+
+            const monthTitle = formatMonthTitle(appState.activeMonth);
+            document.getElementById('activeMonthLabel').textContent = monthTitle;
+            document.getElementById('dashMonthTitle').textContent = `Расходы • ${monthTitle}`;
+            document.getElementById('limitsMonthSub').textContent = monthTitle;
+            document.getElementById('reportPeriodPill').textContent = monthTitle;
+            document.getElementById('calendarGridMonthTitle').textContent = monthTitle;
+
+            // Статус Демо / Личная база
+            const badge = document.getElementById('dataStatusBadge');
+            if (appState.isDemoMode) {
+                badge.textContent = 'Демо-примеры';
+                badge.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+            } else {
+                badge.textContent = 'Личная база';
+                badge.className = 'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+            }
+
+            // Расчет цифр за выбранный месяц
+            const monthExpenses = getMonthExpenses(appState.activeMonth);
+            const totalSpent = monthExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+            const totalLimit = appState.categories.reduce((s, c) => s + Number(c.limit || 0), 0);
+            const remaining = totalLimit - totalSpent;
+            const percentUsed = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0;
+            const daysInMo = getDaysInMonth(appState.activeMonth);
+            const dailyNorm = totalLimit > 0 ? Math.round(totalLimit / daysInMo) : 0;
+
+            document.getElementById('statTotalSpent').textContent = `${formatMoney(totalSpent)} ${cur}`;
+            document.getElementById('statTotalLimit').textContent = `${formatMoney(totalLimit)} ${cur}`;
+            document.getElementById('statPercentBadge').textContent = `${percentUsed}%`;
+
+            const remEl = document.getElementById('statRemainingBudget');
+            remEl.textContent = `${formatMoney(remaining)} ${cur}`;
+            remEl.className = remaining >= 0
+                ? 'font-display text-xl sm:text-2xl font-extrabold text-emerald-600'
+                : 'font-display text-xl sm:text-2xl font-extrabold text-rose-600';
+
+            document.getElementById('statDailyNormHint').textContent = `Безопасный лимит дня: ~${dailyNorm} ${cur}/день`;
+
+            // Карточка выбранного календарного дня
+            const dayLabelEl = document.getElementById('statSelectedDayLabel');
+            const daySpentEl = document.getElementById('statSelectedDaySpent');
+            const dayCountEl = document.getElementById('statSelectedDayCount');
+
+            if (appState.selectedDate === 'ALL') {
+                const todayISO = getSystemTodayISO();
+                const targetDay = todayISO.startsWith(appState.activeMonth) ? todayISO : `${appState.activeMonth}-29`;
+                const dayExps = monthExpenses.filter(e => String(e.date).slice(0, 10) === targetDay);
+                const daySum = dayExps.reduce((s, e) => s + Number(e.amount || 0), 0);
+                dayLabelEl.textContent = `День (${formatHumanDate(targetDay).slice(0, -5)})`;
+                daySpentEl.textContent = `${formatMoney(daySum)} ${cur}`;
+                dayCountEl.textContent = `Чеков: ${dayExps.length} • Открыть календарь`;
+            } else {
+                const dayExps = getSelectedDayOrMonthExpenses();
+                const daySum = dayExps.reduce((s, e) => s + Number(e.amount || 0), 0);
+                dayLabelEl.textContent = `Выбран: ${formatHumanDate(appState.selectedDate)}`;
+                daySpentEl.textContent = `${formatMoney(daySum)} ${cur}`;
+                dayCountEl.textContent = `Операций за день: ${dayExps.length}`;
+            }
+
+            // Карточка холодильника
+            document.getElementById('statFridgeSummary').textContent = `${appState.fridgeItems.length} зап. / ${appState.shoppingList.length} в спис.`;
+            const dietNames = {
+                vegan: '🌱 Веган 100% (БЖУ)',
+                student: '🎓 Студент / Общага',
+                universal: '🥗 Универсальный ПП'
+            };
+            document.getElementById('statDietModeLabel').textContent = dietNames[appState.dietMode] || dietNames.vegan;
+        }
+
+        /**
+         * ГОРИЗОНТАЛЬНАЯ ЛЕНТА ДНЕЙ МЕСЯЦА
+         */
+        function renderHorizontalDayStrip() {
+            const scroller = document.getElementById('horizontalDaysScroller');
+            if (!scroller) return;
+            scroller.innerHTML = '';
+
+            const cur = appState.currency || 'BYN';
+            const daysCount = getDaysInMonth(appState.activeMonth);
+            const monthExpenses = getMonthExpenses(appState.activeMonth);
+
+            // Группируем суммы по дням
+            const totalsByDay = {};
+            monthExpenses.forEach(e => {
+                const dKey = String(e.date || '').slice(0, 10);
+                totalsByDay[dKey] = (totalsByDay[dKey] || 0) + Number(e.amount || 0);
+            });
+
+            // Бейдж текущего фильтра
+            const filterBadge = document.getElementById('currentFilterBadge');
+            const btnAll = document.getElementById('btnAllDays');
+            if (appState.selectedDate === 'ALL') {
+                filterBadge.textContent = `Весь ${formatMonthTitle(appState.activeMonth)}`;
+                btnAll.className = 'btn-press text-xs font-bold px-3 py-1 rounded-xl bg-slate-900 text-white transition cursor-pointer';
+            } else {
+                filterBadge.textContent = formatHumanDate(appState.selectedDate);
+                btnAll.className = 'btn-press text-xs font-semibold px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer';
+            }
+
+            const shortWeekDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+            const [yr, mo] = appState.activeMonth.split('-').map(Number);
+
+            for (let day = 1; day <= daysCount; day++) {
+                const dd = String(day).padStart(2, '0');
+                const fullDate = `${appState.activeMonth}-${dd}`;
+                const daySpend = totalsByDay[fullDate] || 0;
+                const isSelected = appState.selectedDate === fullDate;
+                const dow = shortWeekDays[new Date(yr, mo - 1, day).getDay()];
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => selectCalendarDate(isSelected ? 'ALL' : fullDate);
+
+                if (isSelected) {
+                    btn.className = 'btn-press shrink-0 w-13 py-1.5 px-2 rounded-2xl bg-violet-600 text-white font-bold text-center shadow-md shadow-violet-500/25 transition cursor-pointer';
+                } else if (daySpend > 0) {
+                    btn.className = 'btn-press shrink-0 w-13 py-1.5 px-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-slate-900 font-semibold text-center transition cursor-pointer';
+                } else {
+                    btn.className = 'btn-press shrink-0 w-12 py-1.5 px-2 rounded-2xl bg-slate-50 hover:bg-slate-100 border border-slate-200/60 text-slate-500 text-center transition cursor-pointer';
+                }
+
+                btn.innerHTML = `
+                    <div class="text-[9px] uppercase opacity-75">${dow}</div>
+                    <div class="text-xs sm:text-sm font-extrabold leading-tight">${day}</div>
+                    <div class="text-[9px] font-bold truncate mt-0.5 ${isSelected ? 'text-violet-100' : daySpend > 0 ? 'text-emerald-700' : 'opacity-0'}">
+                        ${daySpend > 0 ? formatMoney(daySpend) : '•'}
+                    </div>
+                `;
+                scroller.appendChild(btn);
+            }
+        }
+
+        /**
+         * ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК (Десктоп + Мобильный нижний бар)
+         */
+        function switchTab(tabName) {
+            activeTab = tabName;
+            const tabs = ['finance', 'fridge', 'report'];
+
+            // Десктопная панель дней видна в Бюджете и Отчете, скрыта в Холодильнике
+            const dayStrip = document.getElementById('dayStripSection');
+            if (dayStrip) {
+                dayStrip.style.display = (tabName === 'fridge') ? 'none' : 'block';
+            }
+
+            tabs.forEach(t => {
+                const sec = document.getElementById(`module-${t}`);
+                const deskBtn = document.getElementById(`deskTab-${t}`);
+                const mobBtn = document.getElementById(`mobTab-${t}`);
+
+                if (t === tabName) {
+                    sec.classList.remove('hidden');
+                    if (deskBtn) {
+                        deskBtn.className = 'py-2.5 px-4 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer bg-slate-900 text-white shadow-sm';
+                    }
+                    if (mobBtn) {
+                        mobBtn.className = 'btn-press flex flex-col items-center justify-center py-1.5 rounded-2xl text-violet-600 bg-violet-50 font-bold transition cursor-pointer';
+                    }
+                } else {
+                    sec.classList.add('hidden');
+                    if (deskBtn) {
+                        deskBtn.className = 'py-2.5 px-4 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 transition cursor-pointer text-slate-600 hover:bg-slate-100';
+                    }
+                    if (mobBtn) {
+                        mobBtn.className = 'btn-press flex flex-col items-center justify-center py-1.5 rounded-2xl text-slate-500 font-medium transition cursor-pointer';
+                    }
+                }
+            });
+
+            refreshAllViews();
+        }
+
+        // =========================================================================
+        // ВКЛАДКА 1: БЮДЖЕТ И РАСХОДЫ
+        // =========================================================================
+
+        function renderFinanceModule() {
+            const cur = appState.currency || 'BYN';
+            const monthExpenses = getMonthExpenses(appState.activeMonth);
+
+            // 1. Кнопки категорий
+            const grid = document.getElementById('categoryButtonsGrid');
+            grid.innerHTML = '';
+            if (!appState.categories.some(c => c.name === appState.selectedCategory) && appState.categories.length > 0) {
+                appState.selectedCategory = appState.categories[0].name;
+            }
+            document.getElementById('selectedCategoryLabel').textContent = appState.selectedCategory;
+
+            appState.categories.forEach(cat => {
+                const isSelected = cat.name === appState.selectedCategory;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => {
+                    appState.selectedCategory = cat.name;
+                    saveStateToStorage();
+                    renderFinanceModule();
+                };
+                btn.className = isSelected
+                    ? 'btn-press flex items-center gap-2.5 p-3 rounded-2xl border-2 border-violet-600 bg-violet-50/90 text-slate-900 font-bold text-xs shadow-xs transition cursor-pointer text-left'
+                    : 'btn-press flex items-center gap-2.5 p-3 rounded-2xl border border-slate-200/80 hover:border-slate-300 bg-slate-50/70 text-slate-700 font-semibold text-xs transition cursor-pointer text-left';
+                btn.innerHTML = `
+                    <span class="text-lg shrink-0">${cat.emoji || '📌'}</span>
+                    <div class="min-w-0">
+                        <div class="truncate">${escapeHtml(cat.name)}</div>
+                        <div class="text-[10px] text-slate-400 font-normal">${cat.limit} ${cur}</div>
+                    </div>
+                `;
+                grid.appendChild(btn);
+            });
+
+            // 2. Карточки прогресса лимитов за активный месяц
+            const progressList = document.getElementById('categoryProgressList');
+            progressList.innerHTML = '';
+
+            appState.categories.forEach(cat => {
+                const spent = monthExpenses
+                    .filter(e => e.category.toLowerCase() === cat.name.toLowerCase())
+                    .reduce((s, e) => s + Number(e.amount || 0), 0);
+                const limit = Number(cat.limit) || 1;
+                const pct = Math.round((spent / limit) * 100);
+                const barWidth = Math.min(pct, 100);
+
+                let barColor = 'bg-emerald-500';
+                let pillColor = 'bg-emerald-50 text-emerald-700';
+                if (pct > 100) {
+                    barColor = 'bg-rose-500';
+                    pillColor = 'bg-rose-100 text-rose-700';
+                } else if (pct >= 75) {
+                    barColor = 'bg-amber-500';
+                    pillColor = 'bg-amber-100 text-amber-800';
+                }
+
+                const card = document.createElement('div');
+                card.className = 'p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/70';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between text-xs mb-2">
+                        <span class="font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                            <span>${cat.emoji}</span>
+                            <span class="truncate">${escapeHtml(cat.name)}</span>
+                        </span>
+                        <span class="text-[11px] font-extrabold px-2 py-0.5 rounded-full ${pillColor}">${pct}%</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden mb-1.5">
+                        <div class="h-full ${barColor} rounded-full transition-all duration-500" style="width:${barWidth}%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-500">
+                        <span>Потрачено: <strong class="text-slate-800">${formatMoney(spent)} ${cur}</strong></span>
+                        <span>Лимит: ${formatMoney(limit)}</span>
+                    </div>
+                `;
+                progressList.appendChild(card);
+            });
+
+            // 3. Фильтр истории и рендер транзакций за день или месяц
+            const filterSelect = document.getElementById('expenseFilterSelect');
+            const currentCatFilter = filterSelect.value || 'ALL';
+            filterSelect.innerHTML = `<option value="ALL">Все категории</option>`;
+            appState.categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.name;
+                opt.textContent = `${cat.emoji} ${cat.name}`;
+                if (cat.name === currentCatFilter) opt.selected = true;
+                filterSelect.appendChild(opt);
+            });
+
+            const periodExpenses = getSelectedDayOrMonthExpenses();
+            const filteredExpenses = currentCatFilter === 'ALL'
+                ? [...periodExpenses].reverse()
+                : periodExpenses.filter(e => e.category === currentCatFilter).reverse();
+
+            document.getElementById('expensesCountBadge').textContent = filteredExpenses.length;
+            document.getElementById('activeDayHistoryTag').textContent = appState.selectedDate === 'ALL'
+                ? `• за весь ${formatMonthTitle(appState.activeMonth)}`
+                : `• за ${formatHumanDate(appState.selectedDate)}`;
+
+            const historyContainer = document.getElementById('expenseHistoryContainer');
+            if (filteredExpenses.length === 0) {
+                historyContainer.innerHTML = `
+                    <div class="py-10 text-center text-slate-400 text-xs sm:text-sm">
+                        <i class="fa-regular fa-calendar-xmark text-2xl mb-2 block opacity-50"></i>
+                        За выбранный период записей нет.
+                        ${appState.selectedDate !== 'ALL' ? `<div class="mt-2"><button onclick="selectCalendarDate('ALL')" class="text-violet-600 font-bold underline cursor-pointer">Показать все дни месяца</button></div>` : ''}
+                    </div>
+                `;
+            } else {
+                historyContainer.innerHTML = '';
+                filteredExpenses.forEach(exp => {
+                    const catObj = appState.categories.find(c => c.name.toLowerCase() === exp.category.toLowerCase());
+                    const emoji = catObj ? catObj.emoji : '💳';
+                    const datePart = String(exp.date || '').slice(0, 10);
+                    const row = document.createElement('div');
+                    row.className = 'p-3 rounded-2xl bg-slate-50/70 hover:bg-slate-100/80 border border-slate-200/60 flex items-center justify-between gap-3 transition';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-2xl bg-white shadow-2xs border border-slate-100 flex items-center justify-center text-lg shrink-0">
+                                ${emoji}
+                            </div>
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">${escapeHtml(exp.category)}</div>
+                                <div class="text-xs text-slate-500 truncate">${escapeHtml(exp.note || 'Без комментария')}</div>
+                                <button onclick="selectCalendarDate('${datePart}')" class="text-[11px] font-semibold text-violet-600 hover:underline mt-0.5 cursor-pointer">
+                                    <i class="fa-regular fa-calendar mr-1"></i>${formatHumanDate(datePart)} ${exp.time ? '• ' + exp.time : ''}
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="font-display font-extrabold text-slate-900 text-sm sm:text-base">-${formatMoney(exp.amount)} ${cur}</span>
+                            <button onclick="deleteExpense('${exp.id}')" class="w-8 h-8 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer" title="Удалить">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                    historyContainer.appendChild(row);
+                });
+            }
+        }
+
+        function handleQuickLineExpense(event) {
+            event.preventDefault();
+            const input = document.getElementById('quickExpenseInput');
+            const rawText = input.value.trim();
+            if (!rawText) return;
+
+            const parts = rawText.split(/\s+/);
+            let amount = null;
+            let textParts = [];
+
+            for (let i = 0; i < parts.length; i++) {
+                const normalized = parts[i].replace(',', '.');
+                if (!isNaN(normalized) && normalized !== '' && amount === null && (i === parts.length - 1 || parts.length === 2)) {
+                    amount = parseFloat(normalized);
+                } else {
+                    textParts.push(parts[i]);
+                }
+            }
+
+            if (amount === null || amount <= 0) {
+                showToast('Укажите название и сумму через пробел, например: Продукты 42', 'warning');
+                return;
+            }
+
+            const titleText = textParts.join(' ') || appState.selectedCategory;
+            const matchedCategory = appState.categories.find(
+                c => c.name.toLowerCase() === titleText.toLowerCase() ||
+                     titleText.toLowerCase().includes(c.name.toLowerCase())
+            );
+
+            const categoryName = matchedCategory ? matchedCategory.name : appState.selectedCategory;
+            const noteText = matchedCategory ? 'Быстрый ввод строкой' : titleText;
+            const targetDate = document.getElementById('btnExpenseDate').value || getSystemTodayISO();
+
+            addExpenseRecord(categoryName, amount, noteText, targetDate);
+            input.value = '';
+        }
+
+        function handleButtonExpense(event) {
+            event.preventDefault();
+            const amountInput = document.getElementById('btnExpenseAmount');
+            const noteInput = document.getElementById('btnExpenseNote');
+            const dateInput = document.getElementById('btnExpenseDate');
+
+            const amount = parseFloat(amountInput.value);
+            if (isNaN(amount) || amount <= 0) {
+                showToast('Введите корректную сумму', 'warning');
+                return;
+            }
+
+            const note = noteInput.value.trim() || `Запись в «${appState.selectedCategory}»`;
+            const targetDate = dateInput.value || getSystemTodayISO();
+
+            addExpenseRecord(appState.selectedCategory, amount, note, targetDate);
+            amountInput.value = '';
+            noteInput.value = '';
+        }
+
+        function addExpenseRecord(categoryName, amount, note, dateISO) {
+            appState.isDemoMode = false;
+            const cleanDate = (dateISO || getSystemTodayISO()).slice(0, 10);
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            // Если пользователь добавил трату в другой месяц, автоматически переключаемся на этот месяц
+            const expMonth = cleanDate.slice(0, 7);
+            appState.activeMonth = expMonth;
+
+            appState.expenses.push({
+                id: 'exp_' + Date.now(),
+                category: categoryName,
+                amount: Number(amount),
+                note: note,
+                date: cleanDate,
+                time: timeStr
+            });
+
+            saveStateToStorage();
+            refreshAllViews();
+
+            const cur = appState.currency || 'BYN';
+            const catObj = appState.categories.find(c => c.name.toLowerCase() === categoryName.toLowerCase());
+            const catLimit = catObj ? Number(catObj.limit) : 100;
+            const catSpent = getMonthExpenses(expMonth)
+                .filter(e => e.category.toLowerCase() === categoryName.toLowerCase())
+                .reduce((s, e) => s + Number(e.amount), 0);
+            const pct = Math.round((catSpent / catLimit) * 100);
+
+            const box = document.getElementById('advisorBox');
+            const badge = document.getElementById('advisorBadge');
+            const textEl = document.getElementById('advisorText');
+
+            if (pct > 100) {
+                box.className = 'rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-rose-600 to-pink-600 text-white shadow-lg flex items-center gap-3.5 transition-all';
+                badge.textContent = `Превышение лимита (${pct}%)`;
+                textEl.textContent = `Записано ${formatMoney(amount)} ${cur} (${formatHumanDate(cleanDate)}). Лимит по категории «${categoryName}» в этом месяце превышен на ${formatMoney(catSpent - catLimit)} ${cur}!`;
+            } else if (pct >= 75) {
+                box.className = 'rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg flex items-center gap-3.5 transition-all';
+                badge.textContent = `Внимание к лимиту (${pct}%)`;
+                textEl.textContent = `Записано ${formatMoney(amount)} ${cur} (${formatHumanDate(cleanDate)}). Освоено уже ${pct}% месячного бюджета на «${categoryName}». Остаток: ${formatMoney(catLimit - catSpent)} ${cur}.`;
+            } else {
+                box.className = 'rounded-3xl p-4 sm:p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg flex items-center gap-3.5 transition-all';
+                badge.textContent = `Бюджет в норме (${pct}%)`;
+                textEl.textContent = `Записано ${formatMoney(amount)} ${cur} (${formatHumanDate(cleanDate)}) в «${categoryName}». В запасе по этой статье ещё ${formatMoney(catLimit - catSpent)} ${cur}.`;
+            }
+
+            showToast(`+ ${categoryName}: ${formatMoney(amount)} ${cur} (${formatHumanDate(cleanDate)})`, 'success');
+        }
+
+        function deleteExpense(id) {
+            appState.expenses = appState.expenses.filter(e => e.id !== id);
+            saveStateToStorage();
+            refreshAllViews();
+            showToast('Запись удалена', 'success');
+        }
+
+        // =========================================================================
+        // ВКЛАДКА 3: АНАЛИТИЧЕСКИЙ ОТЧЕТ (КАЛЕНДАРЬ ДНЕЙ + 3 СТРАНИЦЫ)
+        // =========================================================================
+
+        function renderAnalyticalReportModule() {
+            const cur = appState.currency || 'BYN';
+            const monthExpenses = getMonthExpenses(appState.activeMonth);
+            const totalSpent = monthExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+            const totalLimit = appState.categories.reduce((s, c) => s + Number(c.limit || 0), 0);
+            const daysInMo = getDaysInMonth(appState.activeMonth);
+            const dailyNorm = totalLimit > 0 ? (totalLimit / daysInMo) : 30;
+
+            // 1. Отрисовка календарной сетки месяца (Страница 1 отчета)
+            const calGrid = document.getElementById('reportCalendarGrid');
+            if (calGrid) {
+                calGrid.innerHTML = '';
+                const [yr, mo] = appState.activeMonth.split('-').map(Number);
+                // День недели 1-го числа (Пн = 0 ... Вс = 6)
+                const firstDow = (new Date(yr, mo - 1, 1).getDay() + 6) % 7;
+
+                // Пустые ячейки перед 1-м числом
+                for (let e = 0; e < firstDow; e++) {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.className = 'h-14 sm:h-16 rounded-2xl bg-slate-50/40';
+                    calGrid.appendChild(emptyDiv);
+                }
+
+                // Группировка сумм по дням
+                const sumByDate = {};
+                const countByDate = {};
+                monthExpenses.forEach(exp => {
+                    const d = String(exp.date || '').slice(0, 10);
+                    sumByDate[d] = (sumByDate[d] || 0) + Number(exp.amount || 0);
+                    countByDate[d] = (countByDate[d] || 0) + 1;
+                });
+
+                for (let day = 1; day <= daysInMo; day++) {
+                    const dd = String(day).padStart(2, '0');
+                    const fullDate = `${appState.activeMonth}-${dd}`;
+                    const spent = sumByDate[fullDate] || 0;
+                    const cnt = countByDate[fullDate] || 0;
+                    const isSelected = appState.selectedDate === fullDate;
+
+                    let cellStyle = 'bg-slate-50 hover:bg-slate-100 border-slate-200/70 text-slate-700';
+                    if (isSelected) {
+                        cellStyle = 'bg-violet-600 text-white border-violet-600 shadow-md shadow-violet-500/30 ring-2 ring-violet-300';
+                    } else if (spent > dailyNorm * 1.3) {
+                        cellStyle = 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-950';
+                    } else if (spent > 0) {
+                        cellStyle = 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-950';
+                    }
+
+                    const cell = document.createElement('button');
+                    cell.type = 'button';
+                    cell.onclick = () => selectCalendarDate(isSelected ? 'ALL' : fullDate);
+                    cell.className = `btn-press h-14 sm:h-16 p-1.5 rounded-2xl border flex flex-col justify-between text-left transition cursor-pointer ${cellStyle}`;
+                    cell.innerHTML = `
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-xs font-extrabold">${day}</span>
+                            ${cnt > 0 ? `<span class="text-[9px] font-bold px-1 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-black/5'}">${cnt}</span>` : ''}
+                        </div>
+                        <div class="text-[10px] sm:text-xs font-extrabold truncate w-full ${spent === 0 ? 'opacity-25 font-normal' : ''}">
+                            ${spent > 0 ? formatMoney(spent) : '—'}
+                        </div>
+                    `;
+                    calGrid.appendChild(cell);
+                }
+            }
+
+            // 2. Отрисовка Страницы 2 отчета (Фокус выбранного календарного дня)
+            const focusTitle = document.getElementById('reportDayFocusTitle');
+            const metricsBox = document.getElementById('reportDaySummaryMetrics');
+            const txList = document.getElementById('reportDayTransactionsList');
+            const verdictBox = document.getElementById('reportDayVerdictBox');
+
+            const activeTransactions = getSelectedDayOrMonthExpenses();
+            const activeSum = activeTransactions.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+            if (appState.selectedDate === 'ALL') {
+                focusTitle.textContent = `Весь месяц (${formatMonthTitle(appState.activeMonth)})`;
+                metricsBox.innerHTML = `
+                    <div class="p-3 rounded-2xl bg-violet-50/70 border border-violet-100">
+                        <div class="text-[10px] uppercase font-bold text-violet-600">Итого за месяц</div>
+                        <div class="font-display font-extrabold text-base sm:text-lg text-slate-900 mt-0.5">${formatMoney(activeSum)} ${cur}</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/70">
+                        <div class="text-[10px] uppercase font-bold text-slate-500">Средний чек / день</div>
+                        <div class="font-display font-extrabold text-base sm:text-lg text-slate-900 mt-0.5">${formatMoney(activeSum / daysInMo)} ${cur}</div>
+                    </div>
+                `;
+                verdictBox.innerHTML = `💡 <strong>Совет:</strong> Нажмите на любую клетку с числом в календаре слева (например, <strong>29</strong> или <strong>15</strong>), чтобы отфильтровать отчет и увидеть все траты конкретно за этот календарный день.`;
+            } else {
+                focusTitle.textContent = `День: ${formatHumanDate(appState.selectedDate)}`;
+                const diffNorm = dailyNorm - activeSum;
+                metricsBox.innerHTML = `
+                    <div class="p-3 rounded-2xl bg-violet-600 text-white">
+                        <div class="text-[10px] uppercase font-bold text-violet-200">Потрачено за день</div>
+                        <div class="font-display font-extrabold text-base sm:text-lg mt-0.5">${formatMoney(activeSum)} ${cur}</div>
+                    </div>
+                    <div class="p-3 rounded-2xl ${diffNorm >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-rose-50 border-rose-200 text-rose-900'} border">
+                        <div class="text-[10px] uppercase font-bold opacity-75">Дневная норма (~${Math.round(dailyNorm)} ${cur})</div>
+                        <div class="font-display font-extrabold text-sm sm:text-base mt-0.5">
+                            ${diffNorm >= 0 ? `Экономия ${formatMoney(diffNorm)} ${cur}` : `Выше на +${formatMoney(Math.abs(diffNorm))} ${cur}`}
+                        </div>
+                    </div>
+                `;
+                verdictBox.innerHTML = activeSum === 0
+                    ? `✅ <strong>День без расходов!</strong> Отличный вклад в экономию месячного бюджета.`
+                    : diffNorm >= 0
+                    ? `✅ <strong>Отличный контроль дня:</strong> расходы за ${formatHumanDate(appState.selectedDate)} уложились в безопасную дневную норму.`
+                    : `⚡ <strong>Активный день закупок:</strong> траты за ${formatHumanDate(appState.selectedDate)} превысили среднедневной ориентир, но это нормально при разовой оплате ЖКУ или закупке продуктов впрок.`;
+            }
+
+            if (activeTransactions.length === 0) {
+                txList.innerHTML = `
+                    <div class="py-6 text-center text-slate-400 text-xs">
+                        В этот день трат не зафиксировано.
+                    </div>
+                `;
+            } else {
+                txList.innerHTML = '';
+                [...activeTransactions].reverse().forEach(exp => {
+                    const catObj = appState.categories.find(c => c.name.toLowerCase() === exp.category.toLowerCase());
+                    const emoji = catObj ? catObj.emoji : '💳';
+                    const item = document.createElement('div');
+                    item.className = 'p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between gap-2 text-xs';
+                    item.innerHTML = `
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-base">${emoji}</span>
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-900 truncate">${escapeHtml(exp.category)}</div>
+                                <div class="text-[11px] text-slate-500 truncate">${escapeHtml(exp.note)} (${formatHumanDate(exp.date).slice(0, -5)})</div>
+                            </div>
+                        </div>
+                        <span class="font-extrabold text-slate-900 shrink-0">-${formatMoney(exp.amount)} ${cur}</span>
+                    `;
+                    txList.appendChild(item);
+                });
+            }
+
+            // 3. Отрисовка Страницы 3 отчета (Разбивка по категориям и рекомендации)
+            const catBreakdown = document.getElementById('reportCategoriesBreakdown');
+            catBreakdown.innerHTML = '';
+            appState.categories.forEach(cat => {
+                const spent = monthExpenses
+                    .filter(e => e.category.toLowerCase() === cat.name.toLowerCase())
+                    .reduce((s, e) => s + Number(e.amount || 0), 0);
+                const pct = cat.limit > 0 ? Math.round((spent / cat.limit) * 100) : 0;
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between text-xs p-2 rounded-xl bg-slate-50';
+                row.innerHTML = `
+                    <span class="font-semibold text-slate-800">${cat.emoji} ${escapeHtml(cat.name)}</span>
+                    <span class="font-bold text-slate-900">${formatMoney(spent)} / ${cat.limit} ${cur} <span class="text-violet-600 ml-1">(${pct}%)</span></span>
+                `;
+                catBreakdown.appendChild(row);
+            });
+
+            const recList = document.getElementById('reportRecommendationsList');
+            recList.innerHTML = `
+                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i><span>В холодильнике в наличии <strong>${appState.fridgeItems.length} поз.</strong> — этого достаточно для приготовления сбалансированных блюд на ближайшие дни без лишних походов в магазин.</span></li>
+                <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i><span>Безопасный дневной лимит на ${formatMonthTitle(appState.activeMonth)} составляет <strong>~${Math.round(dailyNorm)} ${cur}/день</strong>.</span></li>
+            `;
+
+            // 4. Формирование полного текста 3-страничного отчета для копирования в Telegram
+            let lines = [];
+            lines.push(`📊 АНАЛИТИЧЕСКИЙ ОТЧЕТ FINPULSE (${formatMonthTitle(appState.activeMonth)})`);
+            lines.push(`Фильтр даты: ${formatHumanDate(appState.selectedDate)}\n`);
+
+            lines.push(`--- СТРАНИЦА 1: ИТОГИ БЮДЖЕТА ЗА ${formatMonthTitle(appState.activeMonth).toUpperCase()} ---`);
+            lines.push(`• Плановый бюджет месяца: ${formatMoney(totalLimit)} ${cur}`);
+            lines.push(`• Фактически потрачено: ${formatMoney(totalSpent)} ${cur}`);
+            lines.push(`• Свободный остаток: ${formatMoney(totalLimit - totalSpent)} ${cur}\n`);
+
+            lines.push(`--- СТРАНИЦА 2: ДЕТАЛИЗАЦИЯ (${formatHumanDate(appState.selectedDate).toUpperCase()}) ---`);
+            if (activeTransactions.length === 0) {
+                lines.push(`• Операций за выбранный период нет (0 ${cur}).`);
+            } else {
+                activeTransactions.forEach(t => {
+                    lines.push(`• [${t.date}] ${t.category}: ${formatMoney(t.amount)} ${cur} (${t.note})`);
+                });
+                lines.push(`Итого за выбранный фильтр: ${formatMoney(activeSum)} ${cur}`);
+            }
+
+            lines.push(`\n--- СТРАНИЦА 3: РЕВИЗИЯ ХОЛОДИЛЬНИКА И ПОКУПОК ---`);
+            lines.push(`• Запасы дома (${appState.fridgeItems.length}): ${appState.fridgeItems.map(i => `${i.name} (${i.amount})`).join(', ') || 'пусто'}`);
+            lines.push(`• Список покупок (${appState.shoppingList.length}): ${appState.shoppingList.map(s => s.name).join(', ') || 'всё куплено'}`);
+
+            document.getElementById('analyticalReportOutput').textContent = lines.join('\n');
+        }
+
+        function jumpToAddExpenseForSelectedDay() {
+            switchTab('finance');
+            const amountEl = document.getElementById('btnExpenseAmount');
+            if (amountEl) amountEl.focus();
+        }
+
+        // =========================================================================
+        // ВКЛАДКА 2: УМНЫЙ ХОЛОДИЛЬНИК И СПИСОК ПОКУПОК
+        // =========================================================================
+
+        function setDietMode(mode) {
+            appState.dietMode = mode;
+            saveStateToStorage();
+            refreshAllViews();
+        }
+
+        function renderFridgeModule() {
+            const modes = ['vegan', 'student', 'universal'];
+            modes.forEach(m => {
+                const btn = document.getElementById(`dietBtn-${m}`);
+                if (m === appState.dietMode) {
+                    btn.className = 'btn-press px-3.5 py-2.5 rounded-2xl font-bold text-xs border-2 border-emerald-600 bg-emerald-600 text-white text-left shadow-sm transition cursor-pointer flex items-center gap-2.5';
+                } else {
+                    btn.className = 'btn-press px-3.5 py-2.5 rounded-2xl font-bold text-xs border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-left transition cursor-pointer flex items-center gap-2.5';
+                }
+            });
+
+            // Чипсы быстрых продуктов
+            const qBox = document.getElementById('quickFridgeButtonsContainer');
+            qBox.innerHTML = '';
+            appState.quickFridgeButtons.forEach(label => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => addFridgeProductFromText(label);
+                btn.className = 'btn-press text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/70 transition cursor-pointer';
+                btn.innerHTML = `+ ${escapeHtml(label)}`;
+                qBox.appendChild(btn);
+            });
+
+            // Список запасов дома
+            document.getElementById('fridgeTotalBadge').textContent = `${appState.fridgeItems.length} поз.`;
+            const fList = document.getElementById('fridgeInventoryList');
+            if (appState.fridgeItems.length === 0) {
+                fList.innerHTML = `<div class="py-5 text-center text-xs text-slate-400">Запасы пусты. Добавьте продукты кнопками выше!</div>`;
+            } else {
+                fList.innerHTML = '';
+                appState.fridgeItems.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-2.5 rounded-2xl bg-slate-50 border border-slate-200/60';
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span class="font-bold text-xs sm:text-sm text-slate-800 truncate">${escapeHtml(item.name)}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-600">${escapeHtml(item.amount)}</span>
+                        </div>
+                        <button onclick="removeFridgeItem('${item.id}')" class="text-slate-400 hover:text-rose-600 px-2 py-1 text-xs cursor-pointer">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                    fList.appendChild(row);
+                });
+            }
+
+            // Список покупок
+            document.getElementById('shoppingBadgeCount').textContent = appState.shoppingList.length;
+            const sList = document.getElementById('shoppingListContainer');
+            if (appState.shoppingList.length === 0) {
+                sList.innerHTML = `<div class="py-5 text-center text-xs text-slate-400">Список покупок пуст</div>`;
+            } else {
+                sList.innerHTML = '';
+                appState.shoppingList.forEach(sh => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-indigo-50/50 border border-indigo-100';
+                    row.innerHTML = `
+                        <span class="text-xs sm:text-sm font-semibold text-slate-800 truncate">${escapeHtml(sh.name)}</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="handleBuyClick('${sh.id}')" class="btn-press bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-xl transition cursor-pointer">
+                                <i class="fa-solid fa-check mr-1"></i>Куплено
+                            </button>
+                            <button onclick="removeShoppingItem('${sh.id}')" class="text-slate-400 hover:text-rose-600 px-1.5 py-1 text-xs cursor-pointer">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                    sList.appendChild(row);
+                });
+            }
+
+            renderNutritionAndRecipes();
+        }
+
+        function renderNutritionAndRecipes() {
+            const invText = appState.fridgeItems.map(i => i.name.toLowerCase()).join(' ');
+            const hasLegumes = /(чечевиц|нут|фасоль|тофу|горох)/.test(invText);
+            const hasGrains = /(рис|овсян|гречк|круп)/.test(invText);
+            const hasNuts = /(орех|льна|масло)/.test(invText);
+
+            document.getElementById('nutriProteinStat').textContent = (hasLegumes && hasGrains) ? 'Полный (Амино+)' : hasLegumes ? 'Хороший' : 'Нужны бобовые';
+            document.getElementById('nutriFiberStat').textContent = hasGrains ? 'Высокая' : 'Средняя';
+            document.getElementById('nutriFatsStat').textContent = hasNuts ? 'Омега-3 Ок' : 'Добавьте орехи';
+            document.getElementById('nutritionAdvisorText').textContent = (hasLegumes && hasGrains)
+                ? 'У вас отличный баланс злаков и бобовых — это обеспечивает все незаменимые аминокислоты на растительном рационе.'
+                : 'Рекомендуем докупить бобовые (чечевицу, нут или тофу) для полноценного белкового профиля.';
+
+            const recBox = document.getElementById('recipesContainer');
+            recBox.innerHTML = '';
+
+            RECIPES_DATABASE
+                .filter(r => r.profiles.includes(appState.dietMode))
+                .forEach(rec => {
+                    const total = rec.ingredientsDisplay.length;
+                    const have = rec.ingredientsDisplay.filter(ing => invText.includes(ing.key)).length;
+                    const pct = Math.round((have / total) * 100);
+
+                    const ingsHtml = rec.ingredientsDisplay.map(ing => {
+                        const ok = invText.includes(ing.key);
+                        return ok
+                            ? `<span class="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-900"><i class="fa-solid fa-check text-emerald-600"></i> ${escapeHtml(ing.label)}</span>`
+                            : `<button onclick="addShoppingItemByText('${escapeHtml(ing.label)}')" class="btn-press inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 cursor-pointer"><i class="fa-solid fa-cart-plus"></i> ${escapeHtml(ing.label)} (+ Купить)</button>`;
+                    }).join('');
+
+                    const card = document.createElement('div');
+                    card.className = 'p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80';
+                    card.innerHTML = `
+                        <div class="flex flex-wrap items-start justify-between gap-2 mb-2">
+                            <div>
+                                <span class="text-[11px] font-bold text-emerald-700">${escapeHtml(rec.badge)} • ⏱ ${rec.time}</span>
+                                <h4 class="font-display font-extrabold text-slate-900 text-sm sm:text-base">${escapeHtml(rec.title)}</h4>
+                            </div>
+                            <span class="text-xs font-extrabold px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-800">
+                                Есть дома: ${have}/${total} (${pct}%)
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-5 gap-1.5 my-2.5 bg-white p-2 rounded-xl border border-slate-200/60 text-center text-xs">
+                            <div><div class="text-[10px] text-slate-400">Ккал</div><div class="font-extrabold">${rec.kcal}</div></div>
+                            <div><div class="text-[10px] text-slate-400">Белки</div><div class="font-extrabold text-emerald-700">${rec.protein}г</div></div>
+                            <div><div class="text-[10px] text-slate-400">Жиры</div><div class="font-extrabold text-amber-600">${rec.fats}г</div></div>
+                            <div><div class="text-[10px] text-slate-400">Углев.</div><div class="font-extrabold text-indigo-600">${rec.carbs}г</div></div>
+                            <div><div class="text-[10px] text-slate-400">Клетч.</div><div class="font-extrabold text-teal-700">${rec.fiber}г</div></div>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 my-2">${ingsHtml}</div>
+                        <p class="text-xs text-slate-600 leading-relaxed mt-2">${escapeHtml(rec.instructions)}</p>
+                    `;
+                    recBox.appendChild(card);
+                });
+        }
+
+        function handleAddFridgeItem(event) {
+            event.preventDefault();
+            const input = document.getElementById('fridgeInputLine');
+            const raw = input.value.trim();
+            if (!raw) return;
+            raw.split(',').forEach(chunk => {
+                if (chunk.trim()) addFridgeProductFromText(chunk.trim());
+            });
+            input.value = '';
+        }
+
+        function addFridgeProductFromText(text) {
+            appState.isDemoMode = false;
+            let name = text;
+            let amount = 'в наличии';
+            const bracketMatch = text.match(/^(.+?)\s*\((.+?)\)$/);
+            if (bracketMatch) {
+                name = bracketMatch[1].trim();
+                amount = bracketMatch[2].trim();
+            } else {
+                const numMatch = text.match(/^([а-яА-ЯёЁa-zA-Z\s\-]+?)\s+(\d+.*)$/);
+                if (numMatch) {
+                    name = numMatch[1].trim();
+                    amount = numMatch[2].trim();
+                }
+            }
+            const existing = appState.fridgeItems.find(i => i.name.toLowerCase() === name.toLowerCase());
+            if (existing) existing.amount = amount;
+            else appState.fridgeItems.push({ id: 'fr_' + Date.now() + Math.random().toString(36).slice(2, 5), name, amount });
+
+            saveStateToStorage();
+            refreshAllViews();
+            showToast(`В холодильник: ${name} (${amount})`, 'success');
+        }
+
+        function removeFridgeItem(id) {
+            appState.fridgeItems = appState.fridgeItems.filter(i => i.id !== id);
+            saveStateToStorage();
+            refreshAllViews();
+        }
+
+        function handleAddShoppingItem(event) {
+            event.preventDefault();
+            const input = document.getElementById('shoppingInputLine');
+            if (!input.value.trim()) return;
+            addShoppingItemByText(input.value.trim());
+            input.value = '';
+        }
+
+        function addShoppingItemByText(name) {
+            if (!appState.shoppingList.some(i => i.name.toLowerCase() === name.toLowerCase())) {
+                appState.shoppingList.push({ id: 'sh_' + Date.now() + Math.random().toString(36).slice(2, 5), name });
+                saveStateToStorage();
+                refreshAllViews();
+                showToast(`В список покупок: ${name}`, 'success');
+            }
+        }
+
+        function removeShoppingItem(id) {
+            appState.shoppingList = appState.shoppingList.filter(i => i.id !== id);
+            saveStateToStorage();
+            refreshAllViews();
+        }
+
+        function handleBuyClick(id) {
+            const item = appState.shoppingList.find(i => i.id === id);
+            if (!item) return;
+            if (!document.getElementById('autoExpenseOnBuy').checked) {
+                addFridgeProductFromText(item.name);
+                removeShoppingItem(id);
+                return;
+            }
+            pendingBuyShoppingId = id;
+            document.getElementById('buyModalItemTitle').textContent = `Продукт: ${item.name}`;
+            document.getElementById('buyModalPriceInput').value = '';
+            const modal = document.getElementById('buyItemModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeBuyItemModal() {
+            pendingBuyShoppingId = null;
+            const modal = document.getElementById('buyItemModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function confirmBuyShoppingItem() {
+            const item = appState.shoppingList.find(i => i.id === pendingBuyShoppingId);
+            if (item) {
+                const price = parseFloat(document.getElementById('buyModalPriceInput').value);
+                addFridgeProductFromText(item.name);
+                removeShoppingItem(pendingBuyShoppingId);
+                if (!isNaN(price) && price > 0) {
+                    const targetDate = appState.selectedDate !== 'ALL' ? appState.selectedDate : getSystemTodayISO();
+                    addExpenseRecord('Продукты', price, `Покупка: ${item.name}`, targetDate);
+                }
+            }
+            closeBuyItemModal();
+        }
+
+        // =========================================================================
+        // МОДАЛЬНЫЕ ОКНА: СБРОС ДЕМО, НАСТРОЙКИ КНОПОК, DEV-ШПАРГАЛКА
+        // =========================================================================
+
+        function openClearConfirmModal() {
+            const m = document.getElementById('clearConfirmModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeClearConfirmModal() {
+            const m = document.getElementById('clearConfirmModal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function executeClearAllData() {
+            const keepButtons = document.getElementById('keepCustomButtonsCheckbox').checked;
+            appState.isDemoMode = false;
+            appState.expenses = [];
+            appState.fridgeItems = [];
+            appState.shoppingList = [];
+            appState.activeMonth = getSystemMonthISO();
+            appState.selectedDate = 'ALL';
+
+            if (!keepButtons) {
+                appState.categories = [
+                    { id: 'cat_food', name: 'Продукты', emoji: '🥦', limit: 450 },
+                    { id: 'cat_util', name: 'Коммуналка', emoji: '🏠', limit: 180 }
+                ];
+                appState.selectedCategory = 'Продукты';
+            }
+
+            saveStateToStorage();
+            closeClearConfirmModal();
+            syncDateInputsWithActivePeriod();
+            refreshAllViews();
+            showToast('История примеров очищена! Можно начинать с нуля.', 'success');
+        }
+
+        function restoreDemoData() {
+            appState = getInitialDemoState();
+            saveStateToStorage();
+            syncDateInputsWithActivePeriod();
+            refreshAllViews();
+            showToast('Демонстрационные данные за Сентябрь и Октябрь восстановлены!', 'success');
+        }
+
+        function openSettingsModal() {
+            renderSettingsModalContent();
+            const m = document.getElementById('settingsModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeSettingsModal() {
+            const m = document.getElementById('settingsModal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+            refreshAllViews();
+        }
+
+        function openDevModal() {
+            const m = document.getElementById('devModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeDevModal() {
+            const m = document.getElementById('devModal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function setCurrency(curr) {
+            appState.currency = curr;
+            saveStateToStorage();
+            renderSettingsModalContent();
+            refreshAllViews();
+        }
+
+        function renderSettingsModalContent() {
+            ['BYN', '₽', '$', '€'].forEach(c => {
+                const btn = document.getElementById(`currBtn-${c}`);
+                btn.className = (c === appState.currency)
+                    ? 'py-2.5 px-3 rounded-2xl font-bold text-xs sm:text-sm border-2 border-violet-600 bg-violet-50 text-violet-900 cursor-pointer'
+                    : 'py-2.5 px-3 rounded-2xl font-medium text-xs sm:text-sm border border-slate-200 bg-white text-slate-700 cursor-pointer';
+            });
+
+            const catList = document.getElementById('settingsCategoriesList');
+            catList.innerHTML = '';
+            appState.categories.forEach((cat, idx) => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-2xl border border-slate-200';
+                row.innerHTML = `
+                    <input type="text" value="${escapeHtml(cat.emoji)}" onchange="updateCategoryField(${idx}, 'emoji', this.value)" class="col-span-2 rounded-xl border border-slate-200 py-1.5 text-center text-sm bg-white">
+                    <input type="text" value="${escapeHtml(cat.name)}" onchange="updateCategoryField(${idx}, 'name', this.value)" class="col-span-5 rounded-xl border border-slate-200 px-2.5 py-1.5 text-xs sm:text-sm font-bold bg-white">
+                    <input type="number" value="${cat.limit}" min="1" onchange="updateCategoryField(${idx}, 'limit', this.value)" class="col-span-3 rounded-xl border border-slate-200 px-2 py-1.5 text-xs sm:text-sm font-bold bg-white">
+                    <button onclick="deleteCategoryButton(${idx})" class="col-span-2 text-rose-600 hover:bg-rose-100 py-1.5 rounded-xl text-xs cursor-pointer"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+                catList.appendChild(row);
+            });
+
+            const qList = document.getElementById('settingsQuickFridgeList');
+            qList.innerHTML = '';
+            appState.quickFridgeButtons.forEach((label, idx) => {
+                const tag = document.createElement('span');
+                tag.className = 'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200';
+                tag.innerHTML = `${escapeHtml(label)} <button onclick="deleteQuickFridgeBtn(${idx})" class="text-emerald-700 hover:text-rose-600 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>`;
+                qList.appendChild(tag);
+            });
+        }
+
+        function updateCategoryField(idx, field, val) {
+            if (!appState.categories[idx]) return;
+            appState.categories[idx][field] = field === 'limit' ? Math.max(1, parseFloat(val) || 100) : (val.trim() || appState.categories[idx][field]);
+            saveStateToStorage();
+        }
+
+        function deleteCategoryButton(idx) {
+            if (appState.categories.length <= 1) return;
+            appState.categories.splice(idx, 1);
+            saveStateToStorage();
+            renderSettingsModalContent();
+        }
+
+        function handleAddCustomCategory(e) {
+            e.preventDefault();
+            const emoji = document.getElementById('newCatEmoji').value.trim() || '📌';
+            const name = document.getElementById('newCatName').value.trim();
+            const limit = parseFloat(document.getElementById('newCatLimit').value) || 100;
+            if (!name) return;
+            appState.categories.push({ id: 'cat_' + Date.now(), name, emoji, limit });
+            appState.selectedCategory = name;
+            saveStateToStorage();
+            document.getElementById('newCatEmoji').value = '';
+            document.getElementById('newCatName').value = '';
+            document.getElementById('newCatLimit').value = '';
+            renderSettingsModalContent();
+        }
+
+        function handleAddQuickFridgeBtn(e) {
+            e.preventDefault();
+            const input = document.getElementById('newQuickFridgeName');
+            if (!input.value.trim()) return;
+            appState.quickFridgeButtons.push(input.value.trim());
+            saveStateToStorage();
+            input.value = '';
+            renderSettingsModalContent();
+        }
+
+        function deleteQuickFridgeBtn(idx) {
+            appState.quickFridgeButtons.splice(idx, 1);
+            saveStateToStorage();
+            renderSettingsModalContent();
+        }
+
+        // =========================================================================
+        // КОПИРОВАНИЕ ОТЧЕТА И БЭКАП JSON
+        // =========================================================================
+
+        function copyReportToClipboard() {
+            const text = document.getElementById('analyticalReportOutput').textContent;
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                showToast('Отчет скопирован! Можно вставить в Telegram.', 'success');
+            } catch (e) {
+                showToast('Выделите текст для копирования', 'warning');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function exportDataJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `finpulse_backup_${getSystemTodayISO()}.json`);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function importDataJson(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && Array.isArray(parsed.categories) && Array.isArray(parsed.expenses)) {
+                        appState = parsed;
+                        if (!appState.activeMonth) appState.activeMonth = getSystemMonthISO();
+                        if (!appState.selectedDate) appState.selectedDate = 'ALL';
+                        saveStateToStorage();
+                        syncDateInputsWithActivePeriod();
+                        refreshAllViews();
+                        showToast('База данных успешно импортирована!', 'success');
+                    }
+                } catch (err) {
+                    showToast('Ошибка чтения JSON файла', 'danger');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-slate-900 text-white border-emerald-500' : 'bg-amber-950 text-amber-100 border-amber-400';
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl border-l-4 shadow-xl text-xs sm:text-sm font-semibold animate-view ${bg}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.25s ease';
+                setTimeout(() => toast.remove(), 250);
+            }, 3000);
+        }
+
+        function formatMoney(num) {
+            const n = Number(num) || 0;
+            return Number.isInteger(n) ? n.toString() : n.toFixed(2);
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        window.onload = function() {
+            syncDateInputsWithActivePeriod();
+            refreshAllViews();
+        };
+    </script>
+</body>
+</html>
